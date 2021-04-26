@@ -3,28 +3,732 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import *
 #from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, 
 from PyQt5.QtGui import *
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot,pyqtSignal
 from PyQt5.QtCore import Qt
 import pyqtgraph as pg
 import sys  
 import os
 from random import randint
+import json
+import serial
+import time
+from PyQt5.QtCore import QThread
+global pressure_pdata
+global fio2_pdata
+global lpressure
+import threading
+import RPi.GPIO as GPIO
+global ini
+ini = 0
+global rap,data_line
+rap = 0
+GPIO.setmode(GPIO.BCM)
+import Adafruit_ADS1x15
 
-class App(QDialog):
+import sys
+
+global gf,ti
+ti = 0
+global plan
+global rr_value,i_rr
+i_rr = 0
+rr_value= 0
+plan = 0
+sys.setrecursionlimit(10**3)
+global adc
+adc = Adafruit_ADS1x15.ADS1115(address=0x48)
+
+global pressure_val,volume_val,fio_val,peep_val
+global in_time,out_time
+global graph
+global mod_val,mod_val_data
+mod_val_data = 0
+mod_val = 1
+global data_m,control
+global trigger_data
+trigger_data = 0
+
+
+
+GAIN = 1
+
+
+class breathWorker(QThread):
+    
+#    sigDataupdate = Signal(dict)
+    stopSignal = pyqtSignal()
+    running = False
+    breathStatus = 0
+    currentPressure = 0
+    pressureCycleValue = 0
+    global graph
+
+    def __init__(self):
+        super().__init__()
+    #    print("setup pwm ")
+        
+
+        # self._key_lock = threading.Lock()
+        self._exhale_event = threading.Event()
+        self._inhale_event = threading.Event()
+
+        GPIO.setup(12, GPIO.OUT)
+        GPIO.setup(13, GPIO.OUT)
+        
+        GPIO.setup(14, GPIO.OUT)
+        
+        GPIO.setup(26, GPIO.OUT)
+        GPIO.output(14,GPIO.HIGH)
+        self.o2PWM = GPIO.PWM(12, 50)
+        self.pPWM = GPIO.PWM(13, 50)
+###
+        
+    def update_pwm_Data(self):
+        global pressure_val,volume_val,fio_val
+        global in_time,out_time
+        
+      #  self.fetch_data()
+        ###
+        '''
+        pressure_pdata= int(lpressure.text())
+        global fio2_data
+        fio2_data= int(lfio2.text())
+        global volume_pdata
+        volume_pdata = int(lvol.text())
+        print('p_data',pressure_pdata)
+        print('f_data',fio2_data)
+        print('v_data',volume_pdata)
+        '''
+        ###
+        pressure_pdata = int(pressure_val)
+   #     print('p_data',pressure_pdata)
+        volume_pdata = int(volume_val)
+    #    print('v_data',volume_pdata)
+        fio2_data = int(fio_val)   
+    #    print('f_data',fio2_data)
+        
+        
+        #self._key_lock.acquire()
+        #self.o2DC = pressure_pdata
+        #self.pDC = fio2_data
+        pressPercent = 0
+        oxyPercent = 0
+        if(fio2_data)>21 and fio2_data > 50:
+            oxy_value = float(fio2_data)/100
+            pressPercent = float(volume_pdata) * (1-oxy_value)
+            oxyPercent = float(volume_pdata) * oxy_value
+        elif(fio2_data)>21 and fio2_data < 51:
+            oxy_value = float(fio2_data)/100
+            pressPercent = float(volume_pdata) * oxy_value
+            oxyPercent = float(volume_pdata) * (1-oxy_value)
+        else:
+            pressPercent = volume_pdata
+            oxyPercent = 0
+            
+    #    print("Percents: ", pressPercent,oxyPercent)
+        self.pressureCycleValue = self.readPressureValues(pressPercent,oxyPercent)
+    #    print("pressureCycleValue")
+    #    print(self.pressureCycleValue)
+        self.intime = in_time
+        self.outtime = out_time
+        self.in_t = self.intime - 0.3 
+        self.out_t =  self.outtime + 0.3 
+  #      print('in-time',in_time)
+  #      print('out-time',out_time)
+  #      print("In and out" + str(self.in_t) + str(self.out_t))
+   #     self.peep = self.lpeep.text()
+  
+        
+
+    def stop(self):
+  #      print("stopping breather thread")
+        GPIO.output(14,GPIO.HIGH)
+        GPIO.output(26,GPIO.HIGH)
+        self.running = False
+
+    def run(self):
+        global graph,mod_val_data,control
+        global mod_val,plan
+        GPIO.output(14,GPIO.LOW)
+        self.o2PWM.start(0)
+        self.pPWM.start(0)
+        
+#        print("starting breather thread"+ str(self.o2DC)+str(self.pDC)+str(self.in_t)+str(self.out_t)+str(self.peep))
+        QThread.msleep(1)
+                
+    
+
+        if (mod_val == 4):
+             
+      #       print('in mode4')
+             while self.running:
+                 end = time.time()+15
+                 plan = 0
+        #         print('15 seconds starts')
+                 while(time.time()<end):
+                     if (mod_val_data == 1):
+                            print('in')
+                            control = 0
+                            self.pwm_ps_in()
+                   #         threadLock.release()
+                            mod_val_data =0
+                            plan = 1
+                          #  mod_val_data = 0
+                            
+                            
+                        
+                     else:
+       #                 print('ex')
+                        control = 1
+                        self.pwm_ps_out()
+                        
+                        
+
+                        
+                 if(plan ==0 and mod_val_data == 0):
+    #                 print('mode changed to 1')
+                     mod_val = 1
+                     break
+
+                        
+           
+        if (mod_val == 1):
+   #         print('mode 1 enabled')
+            while self.running:
+                
+                self.pwm_in()
+    #            print('mode 1')
+                self.pwm_out()
+        if (mod_val == 5):
+  #          print('mode 5 enabled')
+            while self.running:
+    #           print('mode 5')
+                self.pwm_in()
+            while(self.running == False):
+       #             print('mode 5 off')
+                    self.pwm_out()
+                    break
+        
+               
+   
+
+    def pwm_in(self):
+
+                global graph,i_rr
+                
+      #          print("self.running.loop")
+                self.start_time = time.time()
+      #          print('start',self.start_time)
+                graph = 0
+                
+                self.pPWM.ChangeDutyCycle(self.pressureCycleValue[0])
+                self.o2PWM.ChangeDutyCycle(self.pressureCycleValue[1])
+                
+                GPIO.output(26,GPIO.HIGH)
+                GPIO.output(14,GPIO.LOW)
+                self.breathStatus = 0
+                i_rr += 1
+                
+                             
+                self._inhale_event.wait(timeout=self.in_t)
+    def pwm_out(self):
+                global graph,peep_val,ti
+                global rr_value
+                self.peep = peep_val
+                print('peep',peep_val)
+           #     print(self.peep)
+                print("pwm_out")
+                
+                graph = 1
+                self.o2PWM.ChangeDutyCycle(self.peep)
+                self.pPWM.ChangeDutyCycle(self.peep)
+      #          print('peep',self.peep)
+                GPIO.output(26,GPIO.LOW)
+                self.breathStatus = 1
+                self._exhale_event.wait(timeout=self.out_t)
+                self.end_time = time.time()
+        #        print('end_time',self.end_time)
+                ti = (int(self.end_time) - int(self.start_time))
+                rr_value = int(60/(int(self.end_time) - int(self.start_time)))
+               
+               
+         #       print('rr_value',(rr_value))
+                
+    def pwm_ps_in(self):
+                global graph,rap
+        #        print("self.running.loop")
+                self.start_time = time.time()
+                graph = 0
+                self.pPWM.ChangeDutyCycle(self.pressureCycleValue[0])
+                self.o2PWM.ChangeDutyCycle(self.pressureCycleValue[1])
+                rap = 0
+                GPIO.output(26,GPIO.HIGH)
+                GPIO.output(14,GPIO.LOW)
+                self.breathStatus = 0
+                             
+                self._inhale_event.wait(1)                
+    def pwm_ps_out(self):
+                global graph,peep_val
+                global rr_value
+                self.peep = peep_val
+          #      print('peep',peep_val)
+           #     print(self.peep)
+          #      print("pwm_out")
+                
+                graph = 1
+                self.o2PWM.ChangeDutyCycle(self.peep)
+                self.pPWM.ChangeDutyCycle(self.peep)
+                GPIO.output(26,GPIO.LOW)
+                self.breathStatus = 1
+                self._exhale_event.wait(timeout=self.out_t)
+        #        self.end_time = time.time()
+        #        print('end_time',self.end_time)
+        #        rr_value = int(60/(int(self.end_time) - int(self.start_time)))
+               
+       #        
+       #         print('rr_value',(rr_value))
+
+    def readPressureValues(self, pressValue, oxValue):
+        pressValuFromJson = 0
+        oxyValuFromJson = 0
+        with open('pressure.json') as data_file:
+            data = json.load(data_file)
+            for restaurant in data['PressureValues']:
+                minSatisfied = int(restaurant['PressureValue']['min'])<=int(pressValue)
+                maxSatisfied = int(restaurant['PressureValue']['max'])>=int(pressValue)
+                if(minSatisfied and maxSatisfied):
+        #            print("pressVal",restaurant['PressureValue']['value'])
+                    pressValuFromJson = restaurant['PressureValue']['value']
+            for oxyValue in data['OxygenValues']:
+                minSatisfied = int(oxyValue['OxygenValue']['min'])<=int(oxValue)
+                maxSatisfied = int(oxyValue['OxygenValue']['max'])>=int(oxValue)
+                if(minSatisfied and maxSatisfied):
+          #          print("Oxygen",oxyValue['OxygenValue']['value'])
+                    oxyValuFromJson = oxyValue['OxygenValue']['value']
+
+            return pressValuFromJson,oxyValuFromJson
+
+class backendWorker(QThread):
+    threadSignal = pyqtSignal(dict)
+    stopSignal =  pyqtSignal()
+    dataUpdate = None
+    firstLaunch = True
+    currentVolData = 0
+    global gf
+
+
+    def __init__(self, startParm):
+        super().__init__()
+        #self.running = True
+        self.startParm = startParm   # Initialize the parameters passed to the task
+        print('startParm')
+        self.dataDict = {
+            "curr_act" : 0,
+            "o2conc" : [],
+            "AirV" : [],
+            "Dpress+" : [],
+            "Dpress-" : [],
+            "press+" : [],
+            "press-" : [],
+            "co2" : [],
+            "temp" : [],
+            "hum" : []
+        }
+        #GPIO.setup(4, GPIO.OUT)
+
+    def stop(self):
+        print("stopping thread")
+        self.running = False
+        
+        
+    def initSerData(self):
+        
+        print('init_ser')
+        
+        ###
+        '''
+            
+            self.ser = serial.Serial("/dev/ttyUSB1",9600)  #change ACM number as found from ls /dev/tty/ACM*
+            #self.ser1 = serial.Serial("/dev/ttyUSB1",9600)
+            self.ser.baudrate=9600
+            #self.ser1.baudrate=9600
+        '''
+        ###
+        
+    def sendValues(self):
+        #GPIO.output(4,GPIO.HIGH)
+        #time.sleep(0.2)
+        #GPIO.output(pin,GPIO.LOW)
+        data2transfer = self.dataUpdate["pressure"]+','+self.dataUpdate["intime"]+','+self.dataUpdate["outtime"]+','+self.dataUpdate["peep"]+','+self.dataUpdate["fio2"]
+        print("DEBUG: "+data2transfer)
+        #self.ser1.write(data2transfer.encode())
+
+    def getdata(self):
+        global gf,control
+        global ini,rap,adc
+        
+        global firstvalue,trigger_data
+        global graph,mod_val_data
+        currentPressure = 0
+        
+      #  print('getdata_init')
+        read_ser = []
+        
+#        print('getdata')
+        data = [0]*4
+        trigger = 2 * trigger_data
+        trigger = abs(trigger)
+#        print('trigger',trigger)
+        endtime = time.time()+0.1
+        while(time.time()<endtime):
+            
+            for i in range(4):
+                try:  
+                    data[i] = adc.read_adc(i, gain=GAIN)
+           #         print('i ,data',i,data[i])
+                except:
+                    print('i2c error')
+                
+         #   data_s = data.rstrip()
+         #   data_string = str(data_s)
+        #    data = list(data_string.split(","))
+            #sleep(0.3)
+            pressurel = []
+            pressurel.append(int(data[0])/8000)
+   #         print('presss',pressurel)
+            #time.sleep(0.5)
+  
+        pressurel.sort(reverse = True)
+        
+    #    print('test',pressurel[0])
+        
+        if(graph == 0):
+            
+      #      print('Inhaling')
+
+            if(ini == 0):
+                    firstvalue = pressurel[0]
+            #        print('firstvalue',firstvalue)
+                    currentPressure = firstvalue
+                    ini += 1
+             #       print('ini',ini)
+            else:
+                    nextvalue = pressurel[0]
+                    if(nextvalue > firstvalue):
+                        currentPressure = nextvalue
+                        firstvalue = currentPressure
+                    if(nextvalue < firstvalue):
+                        currentPressure = firstvalue
+                        firstvalue = currentPressure
+              #      print('cpp',currentPressure)        
+            if (currentPressure < pressurel[0]):
+                currentPressure = pressurel[0]
+            else:
+               currentPressure = firstvalue
+      #      print('cp',currentPressure)
+            if(len(self.dataDict["Dpress+"])>300):
+                self.dataDict.clear()
+                self.dataDict = {
+                                    "curr_act" : 0,
+                                    "o2conc" : [],
+                                    "AirV" : [],
+                                    "Dpress+" : [],
+                                    "Dpress-" : [],
+                                    "press+" : [],
+                                    "press-" : [],
+                                    "co2" : [],
+                                    "temp" : [],
+                                    "hum" : []
+                                }
+            self.dataDict["Dpress+"].append(currentPressure)   
+        if (graph == 1):
+     #       print('Exhaling')
+            currentPressure = int(data[0])/8000
+            
+         #   print('exale pre value',currentPressure)
+            if(mod_val == 4):
+                time.sleep(0.5)
+                if (control == 1 and currentPressure < 2.7):
+                    mod_val_data = 1
+       #             print('pressure_low')
+       #         currentPressure = int(data[3])
+       #         if (currentPressure < 400):
+       #             print('below',currentPressure)
+       #             mod_val_data = 1
+               #           print('cp',currentPressure)
+ #           print('sensor-mod',mod_val_data)
+            
+            if(len(self.dataDict["Dpress+"])>300):
+                self.dataDict["Dpress+"].clear()
+                gf = 1
+                self.dataDict = {
+                        "curr_act" : 0,
+                        "o2conc" : [],
+                        "AirV" : [],
+                        "Dpress+" : [],
+                        "Dpress-" : [],
+                        "press+" : [],
+                        "press-" : [],
+                        "co2" : [],
+                        "temp" : [],
+                        "hum" : []
+                    }
+            
+        press = currentPressure     
+        prs = "{:.1f}".format(press)
+        pr = float(prs)
+        if(pr == 0.5):
+            pressure = -10
+        if(pr == 0.6):
+            pressure = -9.5
+        if(pr == 0.7):
+            pressure = -9
+        if(pr == 0.8):
+            pressure = -8.5
+        if(pr == 0.9):
+            pressure = -8
+        if(pr == 1):
+            pressure = -7.5            
+        if(pr == 1.1):
+            pressure = -7
+        if(pr == 1.2):
+            pressure = -6.5
+        if(pr == 1.3):
+            pressure = -6
+        if(pr == 1.4):
+            pressure = -5.5
+        if(pr == 1.5):
+            pressure = -5
+        if(pr == 1.6):
+            pressure = -4.5
+        if(pr == 1.7):
+            pressure = -4
+        if(pr == 1.8):
+            pressure = -3.5
+        if(pr == 1.9):
+            pressure = -3
+        if(pr == 2):
+            pressure = -2.5
+        if(pr == 2.1):
+            pressure = -2
+        if(pr == 2.2):
+            pressure = -1.5            
+        if(pr == 2.3):
+            pressure = -1
+        if(pr == 2.4):
+            pressure = -0.5
+        if(pr == 2.5):
+            pressure =  0
+        if(pr == 2.6):
+            pressure = 0.5
+        if(pr == 2.7):
+            pressure = 1
+        if(pr == 2.8):
+            pressure = 1.5
+        if(pr == 2.9):
+            pressure = 2
+        if(pr == 3.0):
+            pressure = 2.5
+        if(pr == 3.1):
+            pressure = 3
+        if(pr == 3.2):
+            pressure = 3.5
+        if(pr == 3.3):
+            pressure = 4
+        if(pr == 3.4):
+            pressure = 4.5
+        if(pr == 3.5):
+            pressure =  5
+        if(pr == 3.6):
+            pressure = 5.5
+        if(pr == 3.7):
+            pressure = 6
+        if(pr == 3.8):
+            pressure = 6.5
+        if(pr == 3.9):
+            pressure = 7
+        if(pr == 4.0):
+            pressure = 7.5
+        if(pr == 4.1):
+            pressure = 8
+        if(pr == 4.2):
+            pressure = 8.5
+        if(pr == 4.3):
+            pressure = 9
+        if(pr == 4.4):
+            pressure = 9.5
+        if(pr == 4.5):
+            pressure = 10
+
+        #print('prr',pressure)    
+        self.dataDict["Dpress+"].append(pressure*5)
+        #print('sen',data )
+        self.dataDict["o2conc"].append(float(data[3])*0.1276)
+#        print('datadict', self.dataDict)
+ #       print('g',self.dataDict)
+        return self.dataDict
+        
+#         print('sos',sos)
+        #if len(data) < 10:
+         #   print("dropping data")
+            #return None
+        #print(data)
+        #self.dataDict["curr_act"] = int(data[0])
+        '''
+        self.dataDict["o2conc"].insert(0, int(data[1]))
+        self.dataDict["AirV"].insert(0, int(data[2]))
+        self.dataDict["Dpress+"].insert(0, int(data[3]))
+        self.dataDict["Dpress-"].insert(0, int(data[4]))
+        self.dataDict["press+"].insert(0, int(data[5]))
+        self.dataDict["press-"].insert(0, int(data[6]))
+        self.dataDict["co2"].insert(0, int(data[7]))
+        self.dataDict["temp"].insert(0, int(data[8]))
+        self.dataDict["hum"].insert(0, int(data[9]))
+        '''
+ #       self.data_line.setData(self.x, self.y) 
+        #self.dataDict["o2conc"].append(int(data[1]))
+        #self.dataDict["AirV"].append(int(data[2]))
+       # print('o2conc_airv')
+        # # Simbu
+#        pressure = []
+  #      pressure.append(int(data[3]))
+   #     currentpress = []
+  #      currentpress.append(int(data[3])-580)
+      #  CPressure = int(data[3])
+        #print('pressure',currentPressure)
+   #     print(pressure)
+ #       with open('pressure.txt', 'w') as filehandle:
+ #           for items in pressure:
+ #               filehandle.write('%d \n' % items)
+  #      with open('curentpressure.txt', 'w') as filehandle:
+ #           for items in currentpress:
+  #              filehandle.write('%d \n' % items)        
+        # if(self.bthThread.breathStatus==1):
+        #if(currentPressure > 0):
+
+        #     else:
+        #         self.dataDict["Dpress+"].append(dataDict["Dpress+"][-1])
+        # else:
+        #     self.dataDict["Dpress+"].append(currentPressure)
+        # print("Simbu: currentVolData ", currentVolData)
+    #    self.dataDict["Dpress+"].append(currentPressure)
+        #self.dataDict["Dpress-"].append(int(data[4]))
+        #self.dataDict["press+"].append(int(data[5]))
+        #self.dataDict["press-"].append(int(data[6]))
+        #self.dataDict["co2"].append(int(data[7]))
+        #self.dataDict["temp"].append(int(data[8]))
+      #  self.dataDict["hum"].append(int(data[9]))
+
+        #if len(self.dataDict["o2conc"]) >180:
+         #   self.dataDict["o2conc"].pop(0)
+          #  self.dataDict["AirV"].pop(0)
+           # self.dataDict["Dpress+"].pop(0)
+            #self.dataDict["Dpress-"].pop(0)
+            #self.dataDict["press+"].pop(0)
+            #self.dataDict["press-"].pop(0)
+            #self.dataDict["co2"].pop(0)
+            #self.dataDict["temp"].pop(0)
+            #self.dataDict["hum"].pop(0)
+      
+       # print('g',self.dataDict)    
+        
+        #return self.dataDict
+
+    def run(self):
+        global data_m
+        # Do something...
+        if self.firstLaunch :
+            self.initSerData()
+            self.firstLaunch=False
+        #self.sendValues()
+ #       print("starting thread")
+        while self.running:
+            data_m = self.getdata()
+        #    print('data_m',data_m)
+   #         if data_m != None:
+   #             self.threadSignal.emit(data_m)
+
+            QThread.msleep(10)
+        #GPIO.output(4,GPIO.LOW)
+   #     print("stopped thread")
+   #     print('bworker',data_m)
+        #self.threadSignal.emit(self.startParm)
+
+
+
+class App(QFrame):
 
     def __init__(self):
         super().__init__()
         self.title = 'ventilator'
-        self.left = 0
-        self.top = 0
-        self.width = 400
-        self.height = 720
+        self.pmean = []
+        self.mean = []
+        self.mean_v = 0
+        
+        self.left = 10
+        self.top = 10
+        self.width = 320
+        self.height = 100
+        self.on = 0
+        
         self.initUI()
-        self.graph()
-       # self.graph2()
+        self.ie_value = 2
        # self.graph3()
         self.setStyleSheet("background-color: black;")
+        
+        self.bthThread = breathWorker()
+        self.bthThread.stopSignal.connect(self.bthThread.stop)
+        
+        self.beThread = backendWorker('hello')
+  #      self.beThread.threadSignal.connect(self.updateData)
+        self.beThread.stopSignal.connect(self.beThread.stop)
         self.update_parameters()
+        self.graph()
+        #self.graph2()
+        
+        
+        
+
+        
+    def fetch_data(self):
+        
+        ## computing breathing intervals ##
+        global in_time,out_time
+  #      ie_pdata =2
+        bpm = self.lbpm.text()
+        ie_pdata = int(self.ie_value)
+  #      print('ie-ui',self.ie_value)
+        ###
+        '''
+        
+        if self.lie.text() == '0:0':      
+            ie_pdata = 2
+        if self.lie.text() == '1.1':      
+            ie_pdata = 3
+        if self.lie.text() == '1.2':      
+            ie_pdata = 4
+        if self.lie.text() == '1.3':      
+            ie_pdata = 5
+        if self.lie.text() == '1.4':      
+            ie_pdata = 6
+ #       print('ie',ie_pdata)   
+# # # # # # # # # #         print('ie'+str(ie_pdata))
+        ###
+        '''
+        ###
+        self.breathCount = 60 / int(bpm)
+        print('breathcount',self.breathCount)
+    
+        self.inhaleTime = (self.breathCount/(ie_pdata+1)) 
+        self.exhaleTime = (self.breathCount ) - self.inhaleTime
+        
+     #   print('ie',ie_pdata)        
+        in_time = self.inhaleTime
+        out_time = self.exhaleTime
+    #    print('in',self.inhaleTime)
+    #    print('out',self.exhaleTime)
+        
+            #self._key_lock.release()    
 
     def update_parameters(self):
         self.pressure_value = False 
@@ -34,44 +738,170 @@ class App(QDialog):
         self.peep_value = False   
         
     def graph(self):
-        self.graphWidget = pg.PlotWidget()
-        self.x = list(range(100))  # 100 time points
-        self.y = [randint(0,100) for _ in range(100)]  # 100 data points
+        global rap
+        global gf
+        self.graphwidget = pg.PlotWidget()
 
-        self.graphWidget.setBackground('#000000')
+        #self.x = list(range(100))  # 100 time points
+        self.y = [randint(0,0) for _ in range(300)]  # 100 data points
+        
+        
+        self.graphwidget.setBackground('#0000')
+        self.graphwidget.setLabel('left', 'Pressure')
+        self.graphwidget.setLabel('bottom', 'Time')
+        self.graphwidget.getPlotItem().hideAxis('bottom')
 
-        pen = pg.mkPen(color=(255, 0, 0))
-        self.data_line =  self.graphWidget.plot(self.x, self.y, pen=pen)
+        pen = pg.mkPen(color='y')
+        self.data_line =  self.graphwidget.plot(self.y, pen=pen) #fillLevel=0,brush=(150,50,150,50))           #pen=pen)
         self.timer = QtCore.QTimer()
         self.timer.setInterval(50)
         self.timer.timeout.connect(self.update_plot_data)
         self.timer.start()
-        self.layout.addWidget(self.graphWidget,2,0,5,4)
+        self.layout.addWidget(self.graphwidget,2,0,5,4)
+        #self.data_line.clear()
+        
 
     def update_plot_data(self):
+        
+        global data_m,rr_value,i_rr,ti
+        a = 0
+        
+        
+        if self.bthThread.breathStatus == 0:
+            global data_m
+            #print('datarec', data_m)
+            #self.data_get()
+            self.lbcadata.setText('Inhale')
+            press = self.lpresd.text()
+            self.lpresd.setText(press)
+            self.lbtidata.setText(str(ti))
+            #self.lpbdata.setText(press)
+            if (self.on == 1):
+                vol = self.lvol.text()
+                vv = int(vol)+int(randint(-10,15))
+                self.lmvd.setText(str(vv))
+                volc = int(vol) +int(randint(-10,5))
+                self.lbvedata.setText(str(volc))
+         #   peep = int(self.lpeep.text()) + randint(0,10)
+            self.lbpeepdata.setText('-')
 
-        self.x = self.x[1:]  # Remove the first y element.
-        self.x.append(self.x[-1] + 1)  # Add a new value 1 higher than the last.
+            try:
+                
+                self.pip = max(data_m['Dpress+'])
+          #      self.mean.append(self.pip)
+          #      self.pmean = self.mean[-4:]
+           #     print('pmean',self.pmean)
+           #     print('len',len(self.pmean))
+           ###
+                '''
+                if (len(self.pmean)%4) == 0:
+                    self.mean = self.pmean[-4:]
+                    self.mean_v = sum(self.mean)/4
+             #       print('mean',self.mean_v)
+                    if(i_rr < 3):
+                        print('i-rr',i_rr)
+                        self.lbpmeandata.setText(str(self.mean_v))
+                        '''
+           ###
 
-        self.y = self.y[1:]  # Remove the first 
-        self.y.append( randint(0,100))  # Add a new random value.
+                
+                
+                self.lbpdata.setText(str(self.pip))
+            except:
+                self.lbpdata.setText('0')
+                
+  
+        #print('pip',self.pip)   
+        if self.bthThread.breathStatus == 1:
+            self.lbcadata.setText('Exhale')
+            #print('datarec', data_m)
+            self.lpresd.setText('0')
+            self.lbtidata.setText('-')
+            #self.lpbdata.setText(press)
+            if(self.on == 1):
+                vol = self.lvol.text()
+                vv = int(vol)+int(randint(-10,15))
+                self.lmvd.setText(str(vv))
+                volc = int(vol)+int(randint(-10,5))
+                self.lbvedata.setText(str(vol))
+            self.peep_d = min(data_m['Dpress+'])
+            if( self.peep_d > 2.7):
+                self.peep = "{:.1f}".format(self.peep_d)
+            else:
+                self.peep = 2.7
+    #        print('pmeen',pmeen)
+      #      peep = (self.lpeep.setText(str(pmeen)))
+            self.lbpeepdata.setText(str(self.peep))
+            self.lrrd.setText(str(rr_value))
+      #      print('pip',self.pip)
+      #      print('inhale',self.inhaleTime)
+      #      print('peep',self.peep)
+      #      print('exhale',self.exhaleTime)
+            self.mean = (self.pip * self.inhaleTime) + (float(self.peep) * self.exhaleTime)
+      #      print('m',self.mean)
+            if(ti != 0):
+                self.pmean  = int(self.mean) / int(ti)
+                self.pmean_val = "{:.1f}".format(self.pmean)
+                self.lbpmeandata.setText(str(self.pmean_val))
+            #    print('pmean',self.pmean)
+            
+            
 
-        self.data_line.setData(self.x, self.y)  # Update the data.
+            
+        
+        try:
+                self.y = self.y[1:]
+                self.y.append(int(data_m['Dpress+'][-1]))
+                pressure = data_m['Dpress+'][-1] #*5
+                
+              #  o2s = str(data_m["o2conc"][-1])
+                o2 = int(data_m["o2conc"][-1]) #"{.:2f}".format(o2s)
+       #         print('o2', o2)
+                o2s = "{:.1f}".format(o2)
+                if(o2 > 100):
+                    self.laprd.setStyleSheet("background-color: red")
+                    self.laprd.setText(str(o2s))
+                if(o2 < 100):
+                    self.laprd.setStyleSheet("background-color: green")
+                    self.laprd.setText(str(o2s))
+                    
+                self.lpresd.setText(str(pressure))
 
+                
+                
+                #print('try',data_m['Dpress+'][-1])
+                #print('y',self.y)
+       #         print('plvvv',pressure)
+                self.data_line.setData(self.y)
+                
+
+        except:
+            drk = 1
+         #   print('NO sensor data recevied')
+
+        #print('graph_plot')
+         
+        #if(rap == 1):
+           # self.data_line.clear()
+           # print('graph_clear')
+       # Update the data.
+        
+            
+        
     def graph2(self):
         self.graphWidget = pg.PlotWidget()
         self.x2 = list(range(100))  # 100 time points
         self.y2 = [randint(0,100) for _ in range(100)]  # 100 data points
 
-        self.graphWidget.setBackground('#000000')
+        self.graphWidget.setBackground('#0000')
 
         pen = pg.mkPen(color=(255, 0, 0))
-        self.data_line =  self.graphWidget.plot(self.x2, self.y2, pen=pen)
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(50)
-        self.timer.timeout.connect(self.update_plot_data2)
-        self.timer.start()
-        #self.layout.addWidget(self.graphWidget,4,0,2,3)
+        self.data_line2 =  self.graphWidget.plot(self.x2, self.y2, pen=pen)
+        self.timer1 = QtCore.QTimer()
+        self.timer1.setInterval(100)
+        self.timer1.timeout.connect(self.update_plot_data2)
+        self.timer1.start()
+        self.layout.addWidget(self.graphWidget,3,0,3,4)
 
     def update_plot_data2(self):
 
@@ -81,7 +911,7 @@ class App(QDialog):
         self.y2 = self.y2[1:]  # Remove the first 
         self.y2.append( randint(0,100))  # Add a new random value.
 
-        self.data_line.setData(self.x2, self.y2)  # Update the data.
+        self.data_line2.setData(self.x2, self.y2)  # Update the data.
 
     def graph3(self):
         self.graphWidget = pg.PlotWidget()
@@ -113,16 +943,356 @@ class App(QDialog):
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
-        
+        self.readSettings(0)
         self.createGridLayout()
+        
         
         windowLayout = QVBoxLayout()
         windowLayout.addWidget(self.horizontalGroupBox)
 
         self.setLayout(windowLayout)
         
-        self.show()
+        self.showFullScreen()
+    def readSettings(self,i):
+        global mod_val
+        params = ["pressure", "volume", "bpm", "peep", "fio2"]
+        # reading the data from the file
+        
+        if(i == 0):
+        
+            with open('settings.txt') as f:
+                data = f.read()
+           #     print('default')
+        
+        if(i == 1):
+               with open('mode1.txt') as f:
+                data = f.read()
+              #  print('default')
+        if(i == 2):
+               with open('mode2.txt') as f:
+                data = f.read()      
+        if(i == 3):
+               with open('mode3.txt') as f:
+                data = f.read()       
+              
+                
+    #    print("Data type before reconstruction : ", type(data))
 
+        # reconstructing the data as a dictionary
+        self.settings = json.loads(data)
+
+        #self.settings = {}
+        print("Data type after reconstruction : ", type(self.settings))
+        for param in params:
+            try:
+                self.settings[param]["min"]
+                self.settings[param]["max"]
+                self.settings[param]["default"]
+
+            except KeyError as e:
+                print('KeyError - missing key ["%s"]["%s"]' % (param, str(e)) )
+             
+    
+    def label_reset(self):
+        self.lpressure.setText('0')
+        self.lvol.setText('0')
+        self.lbpm.setText('0')
+        self.lpeep.setText('0')
+        self.lfio2.setText('0')
+        
+    def stop_action(self):
+        Bstart = QPushButton('Start')          #start button
+        Bstart.setFont(QFont('Arial', 20))
+        Bstart.setStyleSheet("background-color: white")
+        Bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        Bstart.clicked.connect(self.on_process)
+        self.layout.addWidget(Bstart,1,6)
+        Bstart.clicked.connect(self.stop)
+
+        
+        
+    def stop(self):
+        self.bstop = QPushButton('STOP')
+        self.bstop.setFont(QFont('Arial', 20))
+        self.bstop.setStyleSheet("background-color: grey")
+        self.bstop.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.layout.addWidget(self.bstop,1,6)
+        self.bstop.clicked.connect(self.off_process)
+        self.bstop.clicked.connect(self.stop_action)
+        
+        
+    def ps(self):
+        
+        self.label_reset()
+        self.readSettings(1)
+        
+        self.lpressure.setText(str(self.settings["pressure"]["default"]))
+        self.lvol.setText(str(self.settings["volume"]["default"]))
+        self.lbpm.setText(str(self.settings["bpm"]["default"]))
+        self.lpeep.setText(str(self.settings["peep"]["default"]))
+        self.lfio2.setText(str(self.settings["fio2"]["default"]))
+        
+    def hfonc(self):
+        self.label_reset()
+        self.readSettings(2)
+        
+        self.lpressure.setText(str(self.settings["pressure"]["default"]))
+        self.lvol.setText(str(self.settings["volume"]["default"]))
+        self.lbpm.setText(str(self.settings["bpm"]["default"]))
+        self.lpeep.setText(str(self.settings["peep"]["default"]))
+        self.lfio2.setText(str(self.settings["fio2"]["default"]))
+        
+    def pc(self):
+        self.label_reset()
+        self.readSettings(3)
+        
+        self.lpressure.setText(str(self.settings["pressure"]["default"]))
+        self.lvself.laprdol.setText(str(self.settings["volume"]["default"]))
+        self.lbpm.setText(str(self.settings["bpm"]["default"]))
+        self.lpeep.setText(str(self.settings["peep"]["default"]))
+        self.lfio2.setText(str(self.settings["fio2"]["default"]))
+        
+    def pressure_set(self):
+
+       
+        self.slp = QSlider(Qt.Vertical, self) 
+        self.slp.setRange(0, 100)
+        self.slp.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        self.slp.setFocusPolicy(Qt.StrongFocus)
+        self.slp.setPageStep(1)
+        v = self.lpressure.text()
+        self.slp.setValue(int(v))
+        self.slp.valueChanged.connect(self.pupdateLabel)
+        self.slp.setTickPosition(QSlider.TicksBelow)
+        self.slp.setTickInterval(5)
+
+        self.plabel = QLabel(v, self)
+        self.plabel.setAlignment(Qt.AlignCenter)
+        self.plabel.setMinimumWidth(80)
+        self.plabel.setFont(QFont('Arial', 25))
+        self.plabel.setStyleSheet("color: white;  background-color: black")
+
+        self.layout.addWidget( self.slp,2,6,4,1,alignment=Qt.AlignRight)
+        self.layout.addWidget(self.plabel,6,6)
+        
+
+        self.pupdate_val = QPushButton('P update')
+        self.pupdate_val.setFont(QFont('Verdana', 15))  
+        self.pupdate_val.setStyleSheet("background-color: orange")
+        self.layout.addWidget(self.pupdate_val,7,6)
+        self.pupdate_val.clicked.connect(self.update_setp)
+        
+    def update_setp(self):
+        global pressure_val
+
+       # self.update_parameters()
+        try:
+            self.lpressure.setText(self.pressure_values)
+        except:
+            v = self.plabel.text()
+            self.lpressure.setText(v)
+           
+        pressure_val = self.lpressure.text()
+        self.slp.deleteLater()
+        self.plabel.deleteLater()
+        self.pupdate_val.deleteLater()
+    def pupdateLabel(self, value):      
+        self.plabel.setText(str(value))       
+        self.pressure_values = self.plabel.text()
+
+    def bpm_set(self):
+
+        self.slbpm = QSlider(Qt.Vertical, self) 
+        self.slbpm.setRange(0, 20)
+        self.slbpm.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        v = int(self.lbpm.text())
+        self.slbpm.setValue(v)
+        self.slbpm.setFocusPolicy(Qt.StrongFocus)
+        self.slbpm.setPageStep(5)
+        self.slbpm.valueChanged.connect(self.bpmupdateLabel)
+        self.slbpm.setTickPosition(QSlider.TicksBelow)
+        self.slbpm.setTickInterval(5)
+
+        self.bpmlabel = QLabel(str(v), self)
+        self.bpmlabel.setAlignment(Qt.AlignCenter)
+        self.bpmlabel.setMinimumWidth(80)
+        self.bpmlabel.setFont(QFont('Arial', 25))
+        self.bpmlabel.setStyleSheet("color: white;  background-color: black")
+
+        self.layout.addWidget( self.slbpm,2,6,4,1,alignment=Qt.AlignRight)
+        self.layout.addWidget(self.bpmlabel,6,6)
+        
+
+        self.bupdate_val = QPushButton('BPM update')
+        self.bupdate_val.setFont(QFont('Verdana', 15))  
+        self.bupdate_val.setStyleSheet("background-color: orange")
+        self.layout.addWidget(self.bupdate_val,7,6)
+        self.bupdate_val.clicked.connect(self.update_setbpm)
+        
+    def update_setbpm(self):      
+
+        try:
+            self.lbpm.setText(self.bpm_v)
+        except:    
+            v = self.bpmlabel.text()
+            self.lbpm.setText(v)
+        self.slbpm.deleteLater()
+        self.bpmlabel.deleteLater()
+        self.bupdate_val.deleteLater()    
+        #self.update_parameters()
+    
+    def bpmupdateLabel(self, value):      
+        self.bpmlabel.setText(str(value))
+        #self.lbpm.setText(str(value))
+        self.bpm_v = str(value)     
+
+    def peep_set(self):
+
+        self.slpeep = QSlider(Qt.Vertical, self) 
+        self.slpeep.setRange(0, 20)
+        self.slpeep.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        v = self.lpeep.text()
+        self.slpeep.setValue(int(v))
+        self.slpeep.setFocusPolicy(Qt.StrongFocus)
+        self.slpeep.setPageStep(5)
+        self.slpeep.valueChanged.connect(self.peepupdateLabel)
+        self.slpeep.setTickPosition(QSlider.TicksBelow)
+        self.slpeep.setTickInterval(5)
+
+        self.peeplabel = QLabel(v, self)
+        self.peeplabel.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
+        self.peeplabel.setMinimumWidth(80)
+        self.peeplabel.setFont(QFont('Arial', 25))
+        self.peeplabel.setStyleSheet("color: white;  background-color: black")
+
+        self.layout.addWidget( self.slpeep,2,6,4,1,alignment=Qt.AlignRight)
+        self.layout.addWidget(self.peeplabel,6,6)
+        
+        #self.peeplabel = QLabel('Vol update', self)
+        #self.peeplabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+       # self.peeplabel.setMinimumWidth(80)
+       # self.peeplabel.setFont(QFont('Arial', 10))
+       # self.peeplabel.setStyleSheet("color: white;  background-color: black")
+       # self.layout.addWidget(self.peeplabel,7,6)
+
+        self.peepupdate_val = QPushButton('peep update')
+        self.peepupdate_val.setFont(QFont('Verdana', 15))  
+        self.peepupdate_val.setStyleSheet("background-color: orange")
+        self.layout.addWidget(self.peepupdate_val,7,6)
+        self.peepupdate_val.clicked.connect(self.update_setpeep)
+        
+    def update_setpeep(self):
+        global peep_val
+        try:
+            self.lpeep.setText(self.peep_v)
+        except:
+            v = self.peeplabel.text()
+            self.lpeep.setText(v)
+        peep_val = int(self.lpeep.text())
+        #print('ui_peep',peep_val)
+        self.slpeep.deleteLater()
+        self.peeplabel.deleteLater()
+        self.peepupdate_val.deleteLater()
+        #self.update_parameters()
+    
+    def peepupdateLabel(self, value):
+        
+        self.peeplabel.setText(str(value)) 
+        self.peep_v = str(value)
+        
+    def ti_set(self):
+
+        self.slti = QSlider(Qt.Vertical, self) 
+        self.slti.setRange(0, 100)
+        self.slti.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        self.slti.setFocusPolicy(Qt.StrongFocus)
+        v = self.ti.text()
+        self.slti.setValue(int(v))
+        self.slti.setPageStep(5)
+        self.slti.valueChanged.connect(self.tiupdateLabel)
+        self.slti.setTickPosition(QSlider.TicksBelow)
+        self.slti.setTickInterval(5)
+
+        self.tilabel = QLabel(v, self)
+        self.tilabel.setAlignment(Qt.AlignCenter)
+        self.tilabel.setMinimumWidth(80)
+        self.tilabel.setFont(QFont('Arial', 25))
+        self.tilabel.setStyleSheet("color: white;  background-color: black")
+
+        self.layout.addWidget( self.slti,2,6,4,1,alignment=Qt.AlignRight)
+        self.layout.addWidget(self.tilabel,6,6)
+
+        self.tiupdate_val = QPushButton('ti update')
+        self.tiupdate_val.setFont(QFont('Verdana', 15))  
+        self.tiupdate_val.setStyleSheet("background-color: orange")
+        self.layout.addWidget(self.tiupdate_val,7,6)
+        self.tiupdate_val.clicked.connect(self.update_setti)
+        
+    def update_setti(self):
+        global ti_val
+        try:
+            self.ti.setText(self.ti_v)
+        except:
+            v = self.tilabel.text()
+            self.lfio2.setText(v)
+        ti_val = self.ti.text()
+        self.slti.deleteLater()
+        self.tilabel.deleteLater()
+        self.tiupdate_val.deleteLater()
+        #self.update_parameters()
+    
+    def tiupdateLabel(self, value):      
+        self.tilabel.setText(str(value))
+        #self.lfio2.setText(str(value))
+        self.ti_v = str(value)     
+        
+
+    def fio2_set(self):
+
+        self.slfio2 = QSlider(Qt.Vertical, self) 
+        self.slfio2.setRange(0, 100)
+        self.slfio2.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        self.slfio2.setFocusPolicy(Qt.StrongFocus)
+        v = self.lfio2.text()
+        self.slfio2.setValue(int(v))
+        self.slfio2.setPageStep(5)
+        self.slfio2.valueChanged.connect(self.fio2updateLabel)
+        self.slfio2.setTickPosition(QSlider.TicksBelow)
+        self.slfio2.setTickInterval(5)
+
+        self.fio2label = QLabel(v, self)
+        self.fio2label.setAlignment(Qt.AlignCenter)
+        self.fio2label.setMinimumWidth(80)
+        self.fio2label.setFont(QFont('Arial', 25))
+        self.fio2label.setStyleSheet("color: white;  background-color: black")
+
+        self.layout.addWidget( self.slfio2,2,6,4,1,alignment=Qt.AlignRight)
+        self.layout.addWidget(self.fio2label,6,6)
+
+        self.fupdate_val = QPushButton('fio2 update')
+        self.fupdate_val.setFont(QFont('Verdana', 15))  
+        self.fupdate_val.setStyleSheet("background-color: orange")
+        self.layout.addWidget(self.fupdate_val,7,6)
+        self.fupdate_val.clicked.connect(self.update_setfio2)
+        
+    def update_setfio2(self):
+        global fio_val
+        try:
+            self.lfio2.setText(self.fio2_v)
+        except:
+            v = self.fio2label.text()
+            self.lfio2.setText(v)
+        fio_val = self.lfio2.text()
+        self.slfio2.deleteLater()
+        self.fio2label.deleteLater()
+        self.fupdate_val.deleteLater()
+        #self.update_parameters()
+    
+    def fio2updateLabel(self, value):      
+        self.fio2label.setText(str(value))
+        #self.lfio2.setText(str(value))
+        self.fio2_v = str(value)     
+        
     def value_set(self):
        
         self.sl = QSlider(Qt.Vertical, self) 
@@ -143,32 +1313,85 @@ class App(QDialog):
         self.layout.addWidget(self.label,6,6)
 
         self.update_val = QPushButton('Update')
-        self.update_val.setFont(QFont('Verdana', 20))  
+        self.update_val.setFont(QFont('Arial', 20))  
         self.update_val.setStyleSheet("background-color: red")
         self.layout.addWidget(self.update_val,7,6)
-        self.update_val.clicked.connect(self.update_set)
+        self.update_val.clicked.connect(self.update_set)    
+    
+    def volume_set(self):
+       
+        self.slv = QSlider(Qt.Vertical, self)
+        self.slv.setRange(50, 1500)
+        self.slv.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        self.slv.setFocusPolicy(Qt.NoFocus)
+        v = self.lvol.text()
+        self.slv.setValue(int(v))
+        self.slv.setPageStep(5)
+        self.slv.setGeometry(QtCore.QRect(390,300,360,36))
+        self.slv.valueChanged.connect(self.volume_update)
+        self.slv.setTickPosition(QSlider.TicksBelow)
+        self.slv.setTickInterval(1)
+
+        self.vlabel = QLabel(v, self)
+        self.vlabel.setAlignment(Qt.AlignCenter)
+        self.vlabel.setMinimumWidth(80)
+        self.vlabel.setFont(QFont('Arial', 25))
+        self.vlabel.setStyleSheet("color: white;  background-color: black")
+
+        self.layout.addWidget( self.slv,2,6,4,1,alignment=Qt.AlignRight)
+        self.layout.addWidget(self.vlabel,6,6)
+
+        self.vupdate_val = QPushButton('Vol update')
+        self.vupdate_val.setFont(QFont('Arial', 15))  
+        self.vupdate_val.setStyleSheet("background-color: orange")
+        self.layout.addWidget(self.vupdate_val,7,6)
+        self.vupdate_val.clicked.connect(self.lvolume_set)
         
     def update_set(self):
+        global pressure_val,volume_val,fio_val,peep_val
         #print(self.updated_value) #Updated value
         if (self.pressure_value == True):
             self.lpressure.setText(self.updated_value)
+            pressure_val = int(self.lpressure.text())
             self.pressure_value = False
         if (self.volume_value == True):
             self.lvol.setText(self.updated_value)
+            volume_val = int(self.lvol.text())
             self.volume_value = False
         if(self.bpm_value == True):
             self.lbpm.setText(self.updated_value)
             self.bpm_value = False
         if(self.fio2_value == True):
             self.lfio2.setText(self.updated_value)
+            fio_val = self.lfio2.text()
             self.fio2_value = False
         if(self.peep_value == True):
             self.lpeep.setText(self.updated_value)
-            self.peep_value == False            
-
+            peep_val = int(self.lpeep.text())
+            self.peep_value == False
+  
         self.sl.deleteLater()
         self.label.deleteLater()
         self.update_val.deleteLater()
+        self.update_parameters()
+    
+        
+    def volume_update(self, value):
+        self.vlabel.setText(str(value))
+        self.vol_v = str(value)
+        
+    def lvolume_set(self):
+        global volume_val
+        #print(self.updated_value) #Updated value
+        try:
+            self.lvol.setText(self.vol_v)
+        except:
+            v = self.vlabel.text()
+            self.lvol.setText(v)
+        volume_val = self.lvol.text()
+        self.slv.deleteLater()
+        self.vlabel.deleteLater()
+        self.vupdate_val.deleteLater()
         self.update_parameters()
     
     def bpm_update(self):
@@ -183,12 +1406,13 @@ class App(QDialog):
     def pressure_update(self):
         self.pressure_value = True
 
-    def volume_update(self):
+    def volume_updates(self):
         self.volume_value = True      
         
     def updateLabel(self, value):      
         self.label.setText(str(value))
         self.updated_value = str(value)
+
         
     def ie_update(self):
 
@@ -198,24 +1422,26 @@ class App(QDialog):
       self.cb.addItem("1:2")
       self.cb.addItem("1:3")
       self.cb.addItem("1:4")
-      self.cb.setFont(QFont('Verdana', 13))
+      self.cb.setFont(QFont('Arial', 20))
       self.cb.setStyleSheet("color: black;  background-color: white") 
       self.cb.setGeometry(200, 150, 120, 40)  
-      self.layout.addWidget(self.cb,6,4)
+      self.layout.addWidget(self.cb,7,4)
       self.cb.currentIndexChanged.connect(self.ie_updated)
 
     def ie_updated(self, value):
-        self.cb.deleteLater()
+        #self.cb.deleteLater()
         self.ie_value = str(value)
+   #     print('iev',self.ie_value)
+        if(value == 1):
+            self.lbrdata.setText("1:1")
+        if(value == 2):
+            self.lbrdata.setText("1:2")
+        if(value == 3):
+            self.lbrdata.setText("1:3")
+        if(value == 4):
+            self.lbrdata.setText("1:4")    
         
-        if(self.ie_value == '1'):
-            self.lie.setText('1:1')
-        if(self.ie_value == '2'):
-            self.lie.setText('1:2')
-        if(self.ie_value == '3'):
-            self.lie.setText('1:3')
-        if(self.ie_value == '4'):
-            self.lie.setText('1:4')            
+                
 
     def trigger_update(self):
 
@@ -229,335 +1455,434 @@ class App(QDialog):
       self.cbtr.addItem("-5")
       self.cbtr.addItem("-4")
       self.cbtr.addItem("-3")
-      self.cbtr.setFont(QFont('Verdana', 13))
+      self.cbtr.setFont(QFont('Arial', 20))
       self.cbtr.setStyleSheet("color: black;  background-color: white") 
       self.cbtr.setGeometry(200, 150, 120, 40)  
-      self.layout.addWidget(self.cbtr,4,4)
+      self.layout.addWidget(self.cbtr,5,4)
       self.cbtr.currentIndexChanged.connect(self.trigger_updated)
 
     def trigger_updated(self, value):
-        self.cbtr.deleteLater()
-        self.trigger_value = str(value)
-        if self.trigger_value == '1':
-            self.ltrigger.setText("-10")
-        if self.trigger_value == '2':
-            self.ltrigger.setText("-9")
-        if self.trigger_value == '3':
-            self.ltrigger.setText("-8")
-        if self.trigger_value == '4':
-            self.ltrigger.setText("-7")
-        if self.trigger_value == '5':
-            self.ltrigger.setText("-6")
-        if self.trigger_value == '6':
-            self.ltrigger.setText("-5")
-        if self.trigger_value == '7':
-            self.ltrigger.setText("-4")
-        if self.trigger_value == '8':
-            self.ltrigger.setText("-3")
+        #self.cbtr.deleteLater()
                                         
+        global trigger_data
+        if value == 1:
+            trigger_data = -10
+        if value == 2:
+            trigger_data = -9
+        if value == 3:
+            trigger_data = -8
+        if value == 4:
+            trigger_data = -7
+        if value == 5:
+            trigger_data = -6
+        if value == 6:
+            trigger_data = -5
+        if value == 7:
+            trigger_data = -4
+        if value == 8:
+            trigger_data = -3    
+        #trigger_data = int(self.ltrigger.text())
+#        print('t_da8a',trigger_data)                                
         #print(self.trigger_value)
+        #print(trigger_data)
 
     def mode_update(self):
 
       self.md = QComboBox()
       self.md.addItem("Modes")
       self.md.addItem("None")
-      self.md.addItem("PRVC")
+      #self.md.addItem("PRVC")
       self.md.addItem("VC")
       self.md.addItem("PC")
-      self.md.addItem("PS")
-      self.md.addItem("SIMV(VC)+PS")
-      self.md.addItem("SIMV(PC)+PS")
-      self.md.setFont(QFont('Verdana', 10))
+      self.md.addItem("SPONT+PS")
+      self.md.addItem("HFONC")
+      self.md.addItem("BiPAP")
+      self.md.setFont(QFont('Arial', 20))
       self.md.setStyleSheet("color: black;  background-color: white") 
       self.md.setGeometry(200, 150, 120, 40)  
-      self.layout.addWidget(self.md,2,4)
+      self.layout.addWidget(self.md,3,4)
       self.md.currentIndexChanged.connect(self.mode_updated)
 
     def mode_updated(self, value):
-        self.md.deleteLater()
+        global mod_val
+        #self.md.deleteLater()
         self.mode_set = str(value)
         if self.mode_set == '1':
-            self.lmode.setText('None')
+         #   self.lmode.setText('None')
+            mod_val = 1
+  #          print('mode_val',mod_val)
         if self.mode_set == '2':
-            self.lmode.setText('PRVC')
+          #  self.lmode.setText('VC')
+            mod_val = 1
+     #       print('mode_val',mod_val)
         if self.mode_set == '3':
-            self.lmode.setText('VC')
+           # self.lmode.setText('PC')
+            mod_val = 1
+      #      print('mode_val',mod_val)
+            self.pc()
         if self.mode_set == '4':
-            self.lmode.setText('PC')
+            self.ps()
+            #self.lmode.setText('SPONT+PS')
+            mod_val = 4
+   #         print('mode_val',mod_val)
         if self.mode_set == '5':
-            self.lmode.setText('PS')
+            self.hfonc()
+            #self.lmode.setText('HFONC')
+            mod_val = 5
+     #       print('mode_val',mod_val)
         if self.mode_set == '6':
-            self.lmode.setText('SIMV(VC)+PS')                    
-        if self.mode_set == '7':
-            self.lmode.setText('SIMV(PC)+PS')             
-
+            #self.lmode.setText('BiPAP')
+            mod_val = 4
+     #       print('mode_val',mod_val)
+    def on_process(self):
+   #     print("pressed start button")
+    #    dataFetched = self.fetchData()
+    #    self.beThread.dataUpdate = dataFetched
+        self.fetch_data()
+        self.bthThread.update_pwm_Data()
+        self.beThread.running = True
+        self.bthThread.running = True
+  #      self.disableUI()
+        self.beThread.start()
+        self.bthThread.start()
+        self.on = 1
+        
+    def off_process(self):
+  #      print("pressed stop button")
+        self.on = 0
+        self.beThread.stopSignal.emit()
+        self.bthThread.stopSignal.emit()
+   #     print('closed')
+        
     def createGridLayout(self):
+        global lpressure
+        global pressure_val,volume_val,fio_val,peep_val
         self.horizontalGroupBox = QGroupBox() 
         self.layout = QGridLayout()
-        #self.layout.setColumnStretch(6, 9)
-       # self.layout.setColumnStretch(6, 9)     
+        self.layout.setColumnStretch(6, 9)
+        self.layout.setColumnStretch(6, 9)     
 
         #Adding push buttons
         Bpressure = QPushButton('Pressure') #pressurepush button
         Bpressure.setGeometry(0, 0, 100, 40)
-        Bpressure.setFont(QFont('Verdana', 15))  
+        Bpressure.setFont(QFont('Arial', 20))  
         Bpressure.setStyleSheet("background-color: white")
-        self.layout.addWidget(Bpressure,7,0)
-        Bpressure.clicked.connect(self.value_set)
+        Bpressure.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.layout.addWidget(Bpressure,8,0)
+        
+        Bpressure.clicked.connect(self.pressure_set)
         Bpressure.clicked.connect(self.pressure_update)
 
         self.lpressure = QLabel("0")  #pressure label
         self.lpressure.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.lpressure.setFont(QFont('Arial', 15))
+        self.lpressure.setFont(QFont('Arial', 25))
         self.lpressure.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(self.lpressure,8,0)
+ #       
+        a = str(self.settings["pressure"]["default"])
+        self.lpressure.setText(a)
+        pressure_val = int(self.lpressure.text())
+        self.layout.addWidget(self.lpressure,9,0)
         
         Bvol = QPushButton('Volume') #volumePushButton
         Bvol.setGeometry(0, 0, 100, 40)
-        Bvol.setFont(QFont('Verdana', 15))
+        Bvol.setFont(QFont('Arial', 20))
         Bvol.setStyleSheet("background-color: white")
-        self.layout.addWidget(Bvol,7,1)
-        Bvol.clicked.connect(self.volume_update)
-        Bvol.clicked.connect(self.value_set)
+        Bvol.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.layout.addWidget(Bvol,8,1)
+        #Bvol.clicked.connect(self.volume_update)
+        Bvol.clicked.connect(self.volume_set)
         
         
         self.lvol = QLabel("0")  #volume label
         self.lvol.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.lvol.setFont(QFont('Arial', 15))
+        self.lvol.setFont(QFont('Arial', 25))
         self.lvol.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(self.lvol,8,1)
+        a = str(self.settings["volume"]["default"])
+        self.lvol.setText(a)
+        volume_val = int(self.lvol.text())
+        self.layout.addWidget(self.lvol,9,1)
   
         Bbpm = QPushButton('BPM')  #BPM PushButton
         Bbpm.setGeometry(0, 0, 100, 40)
-        Bbpm.setFont(QFont('Verdana', 15))
+        Bbpm.setFont(QFont('Arial', 20))
         Bbpm.setStyleSheet("background-color: white")
-        self.layout.addWidget(Bbpm,7,2)
-        Bbpm.clicked.connect(self.value_set)
+        Bbpm.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.layout.addWidget(Bbpm,8,2)
+        Bbpm.clicked.connect(self.bpm_set)
         Bbpm.clicked.connect(self.bpm_update)
 
         self.lbpm = QLabel("0")  #BPM label
         self.lbpm.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.lbpm.setFont(QFont('Arial', 15))
+        self.lbpm.setFont(QFont('Arial', 25))
         self.lbpm.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(self.lbpm,8,2)
+        a = str(self.settings["bpm"]["default"])
+        self.lbpm.setText(a)
+        self.layout.addWidget(self.lbpm,9,2)
 
         Bpeep = QPushButton('PEEP')  #peep_button
         Bpeep.setGeometry(0, 0, 100, 40)
-        Bpeep.setFont(QFont('Verdana', 15))  
+        Bpeep.setFont(QFont('Arial', 20))  
         Bpeep.setStyleSheet("background-color: white")
-        self.layout.addWidget(Bpeep,7,3)
-        Bpeep.clicked.connect(self.value_set)
+        Bpeep.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.layout.addWidget(Bpeep,8,3)
+        Bpeep.clicked.connect(self.peep_set)
         Bpeep.clicked.connect(self.peep_update)
 
         self.lpeep = QLabel("0")  #peep label
         self.lpeep.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.lpeep.setFont(QFont('Arial', 15))
+        self.lpeep.setFont(QFont('Arial', 25))
         self.lpeep.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(self.lpeep,8,3)
+        a = str(self.settings["peep"]["default"])
+        self.lpeep.setText(a)
+        peep_val = int(self.lpeep.text())
+        self.layout.addWidget(self.lpeep,9,3)
 
         Bfio2 = QPushButton('fio2')  #fio2 Button
         Bfio2.setGeometry(0, 0, 100, 40)
-        Bfio2.setFont(QFont('Verdana', 15))
+        Bfio2.setFont(QFont('Arial', 20))
         Bfio2.setStyleSheet("background-color: white")
+        Bfio2.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
         self.layout.addWidget(Bfio2,8,4)
-        Bfio2.clicked.connect(self.value_set)
+        Bfio2.clicked.connect(self.fio2_set)
         Bfio2.clicked.connect(self.fio2_update)
 
         self.lfio2 = QLabel("0")  #fio2 label
         self.lfio2.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.lfio2.setFont(QFont('Arial', 15))
+        self.lfio2.setFont(QFont('Arial', 25))
         self.lfio2.setStyleSheet("color: white;  background-color: black")
+        a = str(self.settings["fio2"]["default"])
+        self.lfio2.setText(a)
+        fio_val = int(self.lfio2.text())
         self.layout.addWidget(self.lfio2,9,4)
+        
+        Bti = QPushButton('Ti')  #ti Button
+        Bti.setGeometry(0, 0, 100, 40)
+        Bti.setFont(QFont('Arial', 20))
+        Bti.setStyleSheet("background-color: white")
+        Bti.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.layout.addWidget(Bti,8,5)
+        Bti.clicked.connect(self.ti_set)
+        #Bti.clicked.connect(self.ti_update)
+
+        self.ti = QLabel("0")  #ti label
+        self.ti.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.ti.setFont(QFont('Arial', 25))
+        self.ti.setStyleSheet("color: white;  background-color: black")
+        #a = str(self.settings["fio2"]["default"])
+        #self.lfio2.setText(a)
+        #io_val = int(self.lfio2.text())
+        self.layout.addWidget(self.ti,9,5)
 
         Bmode = QPushButton('Mode') #mode button
         Bmode.setGeometry(0, 0, 100, 400)
-        Bmode.setFont(QFont('Verdana', 15))
+        Bmode.setFont(QFont('Arial', 20))
         Bmode.setStyleSheet("background-color: white")
-        self.layout.addWidget(Bmode,3,4)
-        Bmode.clicked.connect(self.mode_update)
+        #self.layout.addWidget(Bmode,3,4)
+        self.mode_update()
+        #Bmode.clicked.connect(self.mode_update)
 
         Btrigger = QPushButton('Trigger')  #trigger button
         Btrigger.setGeometry(0, 0, 100, 40)
-        Btrigger.setFont(QFont('Verdana', 15))
+        Btrigger.setFont(QFont('Arial', 20))
         Btrigger.setStyleSheet("background-color: white")
-        self.layout.addWidget(Btrigger,4,4)
-        Btrigger.clicked.connect(self.trigger_update)
+        self.trigger_update()
+        #self.layout.addWidget(Btrigger,4,4)
+        #Btrigger.clicked.connect(self.trigger_update)
 
-        self.ltrigger = QLabel("0")  #trigger label
-        self.ltrigger.setFont(QFont('Arial', 15))
+        self.ltrigger = QLabel("Trigger")  #trigger label
+        self.ltrigger.setFont(QFont('Arial', 20))
         self.ltrigger.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(self.ltrigger,5,4)
+        self.layout.addWidget(self.ltrigger,4,4)
 
         self.BIE = QPushButton('I:E')    #IE button
         self.BIE.setGeometry(0, 0, 100, 40)
-        self.BIE.setFont(QFont('Verdana', 15))
+        self.BIE.setFont(QFont('Arial', 20))
         self.BIE.setStyleSheet("background-color: white")
-        self.layout.addWidget(self.BIE,6,4)
-        self.BIE.clicked.connect(self.ie_update)
+        self.ie_update()
+        #self.layout.addWidget(self.BIE,6,4)
+        #self.BIE.clicked.connect(self.ie_update)
 
-        self.lie = QLabel("0:0")  #IE label
-        self.lie.setFont(QFont('Arial', 15))
+        self.lie = QLabel("IE")  #IE label
+        self.lie.setFont(QFont('Arial', 20))
         self.lie.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(self.lie,7,4)
+        self.layout.addWidget(self.lie,6,4)
 
         self.lmode = QLabel("Modes")  #mode label
-        self.lmode.setFont(QFont('Arial', 13))
+        self.lmode.setFont(QFont('Arial', 20))
         self.lmode.setStyleSheet("color: white;  background-color: black")
         self.layout.addWidget(self.lmode,2,4)
 
         ratio = '1:1'                  #breath ratio label
         lbr = QLabel('Breath Ratio')
-        lbr.setFont(QFont('Arial', 13))
-        lbrdata = QLabel(ratio)
-        lbrdata.setFont(QFont('Arial', 15))
+        lbr.setFont(QFont('Arial', 20))
+        self.lbrdata = QLabel(ratio)
+        self.lbrdata.setFont(QFont('Arial', 28))
         lbr.setStyleSheet("color: white;  background-color: black")
-        lbrdata.setStyleSheet("color: white;  background-color: black")
+        self.lbrdata.setStyleSheet("color: white;  background-color: black; border: 2px white")
+        lbr.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.lbrdata.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(lbr,2,5)
-        self.layout.addWidget(lbrdata,3,5)
+        self.layout.addWidget(self.lbrdata,3,5)
 
         pip = '0'                      #pip label       
         lbP = QLabel('PIP')
-        lbP.setFont(QFont('Arial', 13))
+        lbP.setFont(QFont('Arial', 20))
         self.lbpdata = QLabel(pip)
-        self.lbpdata.setFont(QFont('Arial', 15))
-        lbP.setStyleSheet("color: white;  background-color: black")
-        self.lbpdata.setStyleSheet("color: white;  background-color: black")
+        self.lbpdata.setFont(QFont('Arial', 28))
+        lbP.setStyleSheet("color: #55F4A5;  background-color: black")
+        self.lbpdata.setStyleSheet("color: #55F4A5;  background-color: black")
+        lbP.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.lbpdata.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(lbP,4,5)
         self.layout.addWidget(self.lbpdata,5,5)
 
         pmean = '0'                      #mean label    
         lbpmean = QLabel('P Mean')
-        lbpmean.setFont(QFont('Arial', 13))
+        lbpmean.setFont(QFont('Arial', 20))
         self.lbpmeandata = QLabel(pmean)
-        self.lbpmeandata.setFont(QFont('Arial', 15))
+        self.lbpmeandata.setFont(QFont('Arial', 28))
         lbpmean.setStyleSheet("color: white;  background-color: black")
         self.lbpmeandata.setStyleSheet("color: white;  background-color: black")
+        lbpmean.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.lbpmeandata.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(lbpmean,6,5)
         self.layout.addWidget(self.lbpmeandata,7,5)
 
         ti = '0'                          #Ti label
         lbti = QLabel('Ti')
-        lbti.setFont(QFont('Arial', 13))
+        lbti.setFont(QFont('Arial', 20))
         self.lbtidata = QLabel(ti)
-        self.lbtidata.setFont(QFont('Arial', 15))
-        lbti.setStyleSheet("color: white;  background-color: black")
-        self.lbtidata.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(lbti,8,5)
-        self.layout.addWidget(self.lbtidata,9,5)
+        self.lbtidata.setFont(QFont('Arial', 28))
+        lbti.setStyleSheet("color: #55F4A5;  background-color: black")
+        self.lbtidata.setStyleSheet("color: #55F4A5;  background-color: black")
+        lbti.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.lbtidata.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.layout.addWidget(lbti,2,6)
+        self.layout.addWidget(self.lbtidata,3,6)
 
         ca = 'Exhale'                      #current activity label
         lbca = QLabel('Current Activity')
-        lbca.setFont(QFont('Arial', 10))
+        lbca.setFont(QFont('Arial', 20))
         self.lbcadata = QLabel(ca)
-        self.lbcadata.setFont(QFont('Arial', 15))
-        lbca.setStyleSheet("color: white;  background-color: black")
-        self.lbcadata.setStyleSheet("color: white;  background-color: black")
-       # self.lbcadata.setText("Exhale")
-       # self.lbcadata.setStyleSheet("border: 1px solid white;")
-        self.layout.addWidget(lbca,1,6)
-        self.layout.addWidget(self.lbcadata,2,6)
+        self.lbcadata.setFont(QFont('Arial', 28))
+        lbca.setStyleSheet("color: #55F4A5;  background-color: black")
+        self.lbcadata.setStyleSheet("color: #55F4A5;  background-color: black")
+        lbca.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.lbcadata.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        #self.layout.addWidget(lbca,2,6)
+        #self.layout.addWidget(self.lbcadata,3,6)
 
         Ve = '0'                           #Ve label
-        lbve = QLabel('Ve')
-        lbve.setFont(QFont('Arial', 10))
+        lbve = QLabel('VTi')
+        lbve.setFont(QFont('Arial', 20))
         self.lbvedata = QLabel(Ve)
-        self.lbvedata.setFont(QFont('Arial', 15))
+        self.lbvedata.setFont(QFont('Arial', 28))
         lbve.setStyleSheet("color: white;  background-color: black")
         self.lbvedata.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(lbve,3,6)
-        self.layout.addWidget(self.lbvedata,4,6)
+        lbve.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.lbvedata.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.layout.addWidget(lbve,4,6)
+        self.layout.addWidget(self.lbvedata,5,6)
 
-        rr = '0'                            #RR label
-        lbrr = QLabel('RR')
-        lbrr.setFont(QFont('Arial', 10))
+        rr = '0'                            #mV label
+        lbrr = QLabel('mV')
+        lbrr.setFont(QFont('Arial', 20))
         self.lbrrdata = QLabel(rr)
-        self.lbrrdata.setFont(QFont('Arial', 15))
-        lbrr.setStyleSheet("color: white;  background-color: black")
-        self.lbrrdata.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(lbrr,5,6)
-        self.layout.addWidget(self.lbrrdata,6,6)
+        self.lbrrdata.setFont(QFont('Arial', 28))
+        lbrr.setStyleSheet("color: #55F4A5;  background-color: black")
+        self.lbrrdata.setStyleSheet("color: #55F4A5;  background-color: black")
+        lbrr.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.lbrrdata.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.layout.addWidget(lbrr,6,6)
+        self.layout.addWidget(self.lbrrdata,7,6)
 
         peep = '0'                            #PEEP label
         lbpeep = QLabel('PEEP')
-        lbpeep.setFont(QFont('Arial', 10))
+        lbpeep.setFont(QFont('Arial', 20))
         self.lbpeepdata = QLabel(peep)
-        self.lbpeepdata.setFont(QFont('Arial', 15))
+        self.lbpeepdata.setFont(QFont('Arial', 28))
         lbpeep.setStyleSheet("color: white;  background-color: black")
         self.lbpeepdata.setStyleSheet("color: white;  background-color: black")
-        self.layout.addWidget(lbpeep,7,6)
-        self.layout.addWidget(self.lbpeepdata,8,6)
+        lbpeep.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.lbpeepdata.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.layout.addWidget(lbpeep,8,6)
+        self.layout.addWidget(self.lbpeepdata,9,6)
       
         Bstart = QPushButton('Start')          #start button
-        Bstart.setFont(QFont('Verdana', 15))
-        Bstart.setStyleSheet("background-color: white")
-        self.layout.addWidget(Bstart,9,6)
+        Bstart.setFont(QFont('Arial', 20))
+        Bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #Bstart.setStyleSheet("border-style: outset")
+        #Bstart.setStyleSheet("border-colour: black")
+        #Bstart.setStyleSheet("padding: 4px")
+        Bstart.clicked.connect(self.on_process)
+        self.layout.addWidget(Bstart,1,6)
+        Bstart.clicked.connect(self.stop)
         
         self.lalarm = QLabel('Alarm')
-        self.lalarm.setFont(QFont('Arial', 15))
+        self.lalarm.setFont(QFont('Arial', 20))
         self.lalarm.setStyleSheet("color: white;  background-color: black")
         self.lalarm.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.lalarm,0,0)
          
          
-        self.lgas = QLabel('Gas-Flur')
-        self.lgas.setFont(QFont('Arial', 15))
+        self.lgas = QLabel('Gas-Pr')
+        self.lgas.setFont(QFont('Arial', 20))
         self.lgas.setStyleSheet("color: white;  background-color: black")
         self.lgas.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.lgas,0,1)
 
-        self.lgasd = QLabel('0')
-        self.lgasd.setFont(QFont('Arial', 15))
-        self.lgasd.setStyleSheet("color: white;  background-color: black")
+        self.lgasd = QLabel('Normal')
+        self.lgasd.setFont(QFont('Arial', 25))
+        self.lgasd.setStyleSheet("color: white;  background-color: green")
         self.lgasd.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.lgasd,1,1)
 
-        self.lapr = QLabel('APR')
-        self.lapr.setFont(QFont('Arial', 15))
+        self.lapr = QLabel('O2 %')
+        self.lapr.setFont(QFont('Arial', 20))
         self.lapr.setStyleSheet("color: white;  background-color: black")
         self.lapr.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.lapr,0,2)
 
         self.laprd = QLabel('0')
-        self.laprd.setFont(QFont('Arial', 15))
-        self.laprd.setStyleSheet("color: white;  background-color: black")
+        self.laprd.setFont(QFont('Arial', 25))
+        self.laprd.setStyleSheet("color: white;  background-color: green")
         self.laprd.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.laprd,1,2)
 
         self.lpres = QLabel('Pressure')
-        self.lpres.setFont(QFont('Arial', 15))
+        self.lpres.setFont(QFont('Arial', 20))
         self.lpres.setStyleSheet("color: white;  background-color: black")
         self.lpres.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.layout.addWidget(self.lpres,0,3)
+        self.layout.addWidget(self.lpres,0,4)
 
         self.lpresd = QLabel('0')
-        self.lpresd.setFont(QFont('Arial', 15))
-        self.lpresd.setStyleSheet("color: white;  background-color: black")
+        self.lpresd.setFont(QFont('Arial', 25))
+        self.lpresd.setStyleSheet("color: white;  background-color: green")
         self.lpresd.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.layout.addWidget(self.lpresd,1,3)
+        self.layout.addWidget(self.lpresd,1,4)
 
-        self.lmv = QLabel('MV')
-        self.lmv.setFont(QFont('Arial', 15))
+        self.lmv = QLabel('VTe')
+        self.lmv.setFont(QFont('Arial', 20))
         self.lmv.setStyleSheet("color: white;  background-color: black")
         self.lmv.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.layout.addWidget(self.lmv,0,4)
+        self.layout.addWidget(self.lmv,0,3)
 
         self.lmvd = QLabel('0')
-        self.lmvd.setFont(QFont('Arial', 15))
-        self.lmvd.setStyleSheet("color: white;  background-color: black")
+        self.lmvd.setFont(QFont('Arial', 25))
+        self.lmvd.setStyleSheet("color: white;  background-color: green")
         self.lmvd.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.layout.addWidget(self.lmvd,1,4)
+        self.layout.addWidget(self.lmvd,1,3)
 
 
         self.lrr = QLabel('RR')
-        self.lrr.setFont(QFont('Arial', 15))
+        self.lrr.setFont(QFont('Arial', 20))
         self.lrr.setStyleSheet("color: white;  background-color: black")
         self.lrr.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.lrr,0,5) 
 
         self.lrrd = QLabel('0')
-        self.lrrd.setFont(QFont('Arial', 15))
-        self.lrrd.setStyleSheet("color: white;  background-color: black")
+        self.lrrd.setFont(QFont('Arial', 25))
+        self.lrrd.setStyleSheet("color: white;  background-color: green")
         self.lrrd.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.lrrd,1,5) 
 
@@ -565,15 +1890,15 @@ class App(QDialog):
         self.llogo.setFont(QFont('Gabriola', 25))
         self.llogo.setStyleSheet("color: maroon;  background-color: black")
         self.llogo.setAlignment(Qt.AlignLeft | Qt.AlignLeft)
-        self.layout.addWidget(self.llogo,9,0) 
+        #self.layout.addWidget(self.llogo,9,0) 
   
         
-        self.lpower = QLabel('POWER')
+        self.lpower = QLabel('MAIN POWER')
         self.lpower.setFont(QFont('Arail', 13))
         self.lpower.setStyleSheet("color: white;  background-color: green")
         self.lpower.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.layout.addWidget(self.lpower,0,6) 
-
+        self.layout.addWidget(self.lpower,0,6)
+        
         self.horizontalGroupBox.setLayout(self.layout)
 
 if __name__ == '__main__':
