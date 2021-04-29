@@ -1,0 +1,17 @@
+{
+"pressure" : {"min": 0,
+		"max": 100,
+		"default": 100},
+  "volume" : {"min": 100,
+		"max": 2000,
+		"default": 5},
+  "bpm" : {"min": 12,
+		"max": 20,
+		"default": 12},
+  "peep" : {"min": 4,
+		"max": 60,
+		"default": 5},
+  "fio2" : {"min": 21,
+		"max": 100,
+		"default": 5}
+}
