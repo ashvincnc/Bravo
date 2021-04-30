@@ -341,22 +341,22 @@ class App(QFrame):
 
     def stop_action(self):
         Bstart = QPushButton('Start')          #start button
-        Bstart.setFont(QFont('Arial', 20))
+        Bstart.setFont(QFont('Arial', 30))
         Bstart.setStyleSheet("background-color: white")
         Bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
         self.pressurelabel.setText("pressure: " + '-')#str(test))
         self.o2label.setText("o2: " + '-')#str(o2_val))
         self.flowlabel.setText('Flow:'+'-')       
         Bstart.clicked.connect(self.on_process)
-        self.layout.addWidget(Bstart,5,6)
+        self.layout.addWidget(Bstart,5,3)
         Bstart.clicked.connect(self.stop)
 
     def stop(self):
         self.bstop = QPushButton('STOP')
-        self.bstop.setFont(QFont('Arial', 20))
+        self.bstop.setFont(QFont('Arial', 30))
         self.bstop.setStyleSheet("background-color: grey")
         self.bstop.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.layout.addWidget(self.bstop,5,6)
+        self.layout.addWidget(self.bstop,5,3)
         self.bstop.clicked.connect(self.off_process)
         self.bstop.clicked.connect(self.stop_action)      
     def update_flow(self):
@@ -373,37 +373,38 @@ class App(QFrame):
         
          # creating QDial object
         dial = QDial(self)
+        dial.setStyleSheet(" background-color: #20BEC6")
         # adding action to the dial
         dial.valueChanged.connect(lambda: dial_method())
 
         # creating a label
         self.label = QLabel("Flow Value", self)
-        self.label.setFont(QFont('Arial', 25))
+        self.label.setFont(QFont('Arial', 30))
         self.label.setStyleSheet("color: white;  background-color: black")
         self.label.setAlignment(Qt.AlignRight | Qt.AlignRight)
 
         #o2 label
         self.o2label = QLabel("o2:")
-        self.o2label.setFont(QFont('Arial', 25))
+        self.o2label.setFont(QFont('Arial', 30))
         self.o2label.setStyleSheet("color: white;  background-color: black")
 
         self.pressurelabel = QLabel("Pressure:")
-        self.pressurelabel.setFont(QFont('Arial', 25))
+        self.pressurelabel.setFont(QFont('Arial', 30))
         self.pressurelabel.setStyleSheet("color: white;  background-color: black")
 
         self.flowlabel = QLabel("Flow")
-        self.flowlabel.setFont(QFont('Arial', 25))
+        self.flowlabel.setFont(QFont('Arial', 30))
         self.flowlabel.setStyleSheet("color: white;  background-color: black")
 
         Bstart = QPushButton('Start')          #start button
-        Bstart.setFont(QFont('Arial', 20))
+        Bstart.setFont(QFont('Arial', 30))
         Bstart.setStyleSheet("background-color: white")
         Bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
         Bstart.clicked.connect(self.on_process)
         Bstart.clicked.connect(self.stop)
 
         Bupdate = QPushButton('Update')          #start button
-        Bupdate.setFont(QFont('Arial', 20))
+        Bupdate.setFont(QFont('Arial', 30))
         Bupdate.setStyleSheet("background-color: white")
         Bupdate.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
         Bupdate.clicked.connect(self.update_flow)
@@ -428,8 +429,8 @@ class App(QFrame):
         self.layout.addWidget(self.o2label, 2,3)
         self.layout.addWidget(self.pressurelabel, 3,3)
         self.layout.addWidget(self.flowlabel, 4,3)
-        self.layout.addWidget(dummy,2,5,2,2)
-        self.layout.addWidget(Bstart,5,6)
+        #self.layout.addWidget(dummy,2,5,2,2)
+        self.layout.addWidget(Bstart,5,3)
         self.layout.addWidget(Bupdate,5,0)	
   
         self.horizontalGroupBox.setLayout(self.layout)
