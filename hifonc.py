@@ -309,10 +309,10 @@ class App(QFrame):
         try:
             o2_val = round(o2_val,1)
             if(self.off == 0):
-                self.pressurelabel.setText("pressure:" + str(test))
+                self.pressurelabel.setText("Pressure:" + str(test))
                 self.o2label.setText("o2:" + str(o2_val))
             if(self.off == 1):
-                self.pressurelabel.setText("pressure:")
+                self.pressurelabel.setText("Pressure:")
                 self.o2label.setText("o2:")
         except:
             f = 0
@@ -368,8 +368,8 @@ class App(QFrame):
     def createGridLayout(self):
         self.horizontalGroupBox = QGroupBox()
         self.layout = QGridLayout()
-        self.layout.setColumnStretch(1, 4)
-        self.layout.setColumnStretch(2, 4)
+        #self.layout.setColumnStretch(1, 4)
+        #self.layout.setColumnStretch(2, 4)
         
          # creating QDial object
         dial = QDial(self)
