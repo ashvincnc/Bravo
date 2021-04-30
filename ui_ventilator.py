@@ -141,6 +141,10 @@ class breathWorker(QThread):
             pressure_pdata = pressure_pdata*30
             self.pressureCycleValue = self.readPressureValues(pressure_pdata,oxyPercent)
             print('pre30',pressure_pdata)
+        if(mod_val == 5):
+            pressure_pdata = 1400
+            self.pressureCycleValue = self.readPressureValues(pressure_pdata,oxyPercent)
+            
             
         print("pressureCycleValue")
         print(self.pressureCycleValue)
@@ -172,9 +176,9 @@ class breathWorker(QThread):
 
     def run(self):
         
-        global graph,mod_val_data,control,value,ti_value,t#est
+        global graph,mod_val_data,control,value,ti_value,ti,two,lamda_b#est
         global ti_val,pressure_support,ps_control
-        global mod_val,plan,ps_change
+        global mod_val,plan,ps_change,ex_time
         GPIO.output(14,GPIO.LOW)
         self.o2PWM.start(0)
         self.pPWM.start(0)
@@ -194,50 +198,52 @@ class breathWorker(QThread):
              while self.running:
                  end = time.time()+15
                  plan = 0
-
+                 a = 1   
                  while(time.time()<end):
-
+              #       drk_lav = time.time()
                      if (mod_val_data == 1):
-        #                    self.o2PWM.start(0)
-       #                     self.pPWM.start(0)
+                             
+
                             graph = 0
                             print('compress on')
                             control = 0
-
+                            one = time.time()
                             while(test <= pressure_val):
                                 self.pwm_ps_in()
-                                print('pressure:',test)
+      
+                            two = time.time()-one
 
-                            #print('TIME',po)
                             time.sleep(1.5)    
                             self.pwm_ps_no()
 
                             graph = 1
 
                             while(test >= 8):
-                                #(ti_value/4)):                           
- #                               print('exout')
-                                print('pressure out:',test)
+                                drk = 1
 
-                            if(test < 8):#ti_value/4):
-                                print('ti')
-                                    #break
-        #                    print('inmod val',test)    
+
+                            if(test < 8):
+                                drk = 0#ti_value/4):
+
                             mod_val_data =0
                             plan = 1
+                            a = 1
+                            ex_time = lamda_b-lamda
+                            print('ex_time',lamda_b-lamda)
 
-     
                      else:
                          graph = 1
                          control = 1
+                         if(a == 1):
+                             lamda = time.time()
+                         
                          self.pwm_ps_out()
+                         a = 0
 
-
-                
                          
                  if(plan ==0 and mod_val_data == 0):
                       print('mode changed to 1')
-                      mod_val = 1
+                      mod_val = 2
                       break
                     
            
@@ -314,6 +320,7 @@ class breathWorker(QThread):
                 global graph,peep_val,ti
                 global rr_value             
                 graph = 1
+                self.start_time = time.time()
                 self.o2PWM.ChangeDutyCycle(1)
                 self.pPWM.ChangeDutyCycle(1)
 
@@ -324,10 +331,10 @@ class breathWorker(QThread):
     
     def pwm_ps_in(self):
 
-                global graph,i_rr,mod_val_data
+                global graph,i_rr,mod_val_data,ti
                 
    #             print("self.running.loop")
-                self.start_time = time.time()
+                
    #             print('start',self.start_time)
                 
                 
@@ -338,6 +345,7 @@ class breathWorker(QThread):
                 GPIO.output(14,GPIO.LOW)
                 self.breathStatus = 0
                 i_rr += 1
+
 
                 
     def pwm_ps_no(self):
@@ -437,7 +445,7 @@ class backendWorker(QThread):
         #self.ser1.write(data2transfer.encode())
 
     def getdata(self):
-        global gf,control
+        global gf,control,lamda_b
         global ini,rap,adc,ti_val,ti_value,test
         global pressure_support,pressure_val
         global firstvalue,trigger_data
@@ -504,7 +512,7 @@ class backendWorker(QThread):
     #        print('pss',pressure_support)
             if(ini == 0):
                     firstvalue = pressurel[0]
-                    print('firstvalue',firstvalue)
+       #             print('firstvalue',firstvalue)
                     currentPressure = firstvalue
                     ini += 1
              #       print('ini',ini)
@@ -587,8 +595,10 @@ class backendWorker(QThread):
             
          #   print('exale pre value',currentPressure)
             if(mod_val == 4):
+
                 time.sleep(0.5)
                 if (control == 1 and currentPressure < 2.7):
+                    lamda_b = time.time()
                     mod_val_data = 1
                     print('pressure_low')
        #         currentPressure = int(data[3])
@@ -837,7 +847,7 @@ class App(QFrame):
 
     def update_plot_data(self):
         
-        global data_m,rr_value,i_rr,ti,mod_val,pressure_val,pressure_pdata
+        global data_m,rr_value,i_rr,ti,mod_val,pressure_val,pressure_pdata,two,ex_time
         a = 0
         
         
@@ -848,19 +858,38 @@ class App(QFrame):
             self.lbcadata.setText('Inhale')
             #press = self.lpresd.text()
             #self.lpresd.setText(press)
-            self.lbtidata.setText(str(ti))
+            try:
+                if(mod_val == 4):
+                    ti = round(two,1)
+                    self.lbtidata.setText(str(ti))
+                    
+
+                else:
+                    self.lbtidata.setText(str(ti))
+            except:
+                drk = 0
             #self.lpbdata.setText(press)
             if (self.on == 1):
             
                 vol = self.lvol.text()
                 vv = int(vol)
-                self.lmvd.setText(str(vv))
+#                self.lmvd.setText(str(vv))
                 volc = int(vol)
-                self.lbvedata.setText(str(volc))
-                if(mod_val == 2):
+#                self.lbvedata.setText(str(volc))
+                if (mod_val == 4 or mod_val == 2):
                     
                     self.lmvd.setText(str(pressure_val*30))
                     self.lbvedata.setText(str(pressure_val*30))
+            #        print('mode 2,4')
+                elif (mod_val == 5):
+                    self.lbvedata.setText('1400')
+                    self.lmvd.setText('1400')
+                    
+                else:
+                    self.lbvedata.setText(str(volc))
+                    self.lmvd.setText(str(vv))
+                   # print('no change')
+                    
          #   peep = int(self.lpeep.text()) + randint(0,10)
             self.lbpeepdata.setText('-')
 
@@ -886,9 +915,26 @@ class App(QFrame):
                 
                 if(mod_val == 2 or mod_val == 4):
                     self.pip = pressure_val
-                    self.lbpdata.setText(str(self.pip))
+                    if(mod_val == 2):
+                        self.lbpdata.setText(str(self.pip))
+                    if(mod_val == 4):
+                        self.lbpdata.setText(str(self.pip))
+                        self.mean = float((self.pip * ti) + (float(self.peep) * ex_time))
+                        self.pmean = self.mean/(ti+ex_time)
+                        self.pmean = "{:.1f}".format(self.pmean)
+                        self.lbpmeandata.setText(str(self.pmean))
+                        print('pip',self.pip)
+                        print('peep',self.peep)
+                        print('ti',ti)
+                        print('exti',ex_time)
+                    if(mod_val == 5):
+                        self.lbpmeandata.setText('-')
+                        
+                        
                 else:
                     self.lbpdata.setText(str(self.pip))
+                
+
                     
             except:
                 self.lbpdata.setText('0')
@@ -927,13 +973,23 @@ class App(QFrame):
                 self.mean = float((self.pip * self.inhaleTime) + (float(self.peep) * self.exhaleTime))
       #          print('mean',self.mean)
                 if(ti != 0):
-                    ti = float(ti)
-                    self.pmean  = self.mean / ti
-    #                print('pmean',self.pmean)
-   #                 print('ti',ti)
-                    self.pmean = "{:.1f}".format(self.pmean)
-                    self.lbpmeandata.setText(str(self.pmean))
-           #             print('pmean',self.pmean)
+                    if(mod_val == 4):
+                        self.lbpmeandata.setText('-')
+                        self.lbpdata.setText('-')
+                        
+                        
+                    else:    
+                        ti = float(ti)
+                        total = self.inhaleTime + self.exhaleTime
+                 #       print('total',total)
+                        self.pmean  = self.mean / total
+        #                print('pmean',self.pmean)
+       #                 print('ti',ti)
+       #                 self.pmean = "{:.1f}".format(self.pmean)
+
+                        self.pmean = "{:.1f}".format(self.pmean)
+                        self.lbpmeandata.setText(str(self.pmean))
+                               #             print('pmean',self.pmean)
             except:
                 drk = 0
             
@@ -1065,7 +1121,7 @@ class App(QFrame):
 
         self.setLayout(windowLayout)
         
-        self.showFullScreen()
+        self.show()
     def readSettings(self,i):
         global mod_val
         params = ["pressure", "volume", "bpm", "peep", "fio2"]
@@ -2118,4 +2174,3 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = App()
     sys.exit(app.exec_())
-
