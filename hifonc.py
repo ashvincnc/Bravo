@@ -418,7 +418,7 @@ class App(QFrame):
             value = dial.value()
          #   print('vol',volume_pdata)
              
-            self.label.setText("Flow value: " + str(value))
+            self.label.setText("Flow:" + str(value))
             
 
         dummy = QLabel("HFFF")
@@ -426,12 +426,12 @@ class App(QFrame):
 
         self.layout.addWidget(dial, 2,0,2,2)
         self.layout.addWidget(self.label, 4,0)
-        self.layout.addWidget(self.o2label, 2,3)
-        self.layout.addWidget(self.pressurelabel, 3,3)
-        self.layout.addWidget(self.flowlabel, 4,3)
+        self.layout.addWidget(self.o2label, 1,3)
+        self.layout.addWidget(self.pressurelabel, 2,3)
+        self.layout.addWidget(self.flowlabel, 3,3)
         #self.layout.addWidget(dummy,2,5,2,2)
         self.layout.addWidget(Bstart,5,3)
-        self.layout.addWidget(Bupdate,5,0)	
+        self.layout.addWidget(Bupdate,4,3)	
   
         self.horizontalGroupBox.setLayout(self.layout)
 
