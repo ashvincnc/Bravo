@@ -302,18 +302,18 @@ class App(QFrame):
         windowLayout.addWidget(self.horizontalGroupBox)
         self.setLayout(windowLayout)
         
-        self.show()
+        self.showFullScreen()
     
     def update_label(self):
         global test,o2_val,test
         try:
             o2_val = round(o2_val,1)
             if(self.off == 0):
-                self.pressurelabel.setText("pressure: " + str(test))
-                self.o2label.setText("o2: " + str(o2_val))
+                self.pressurelabel.setText("pressure:" + str(test))
+                self.o2label.setText("o2:" + str(o2_val))
             if(self.off == 1):
-                self.pressurelabel.setText("pressure: " + '-')
-                self.o2label.setText("o2: " + '-')
+                self.pressurelabel.setText("pressure:")
+                self.o2label.setText("o2:")
         except:
             f = 0
 
@@ -344,11 +344,11 @@ class App(QFrame):
         Bstart.setFont(QFont('Arial', 30))
         Bstart.setStyleSheet("background-color: white")
         Bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.pressurelabel.setText("pressure: " + '-')#str(test))
-        self.o2label.setText("o2: " + '-')#str(o2_val))
-        self.flowlabel.setText('Flow:'+'-')       
+        self.pressurelabel.setText("pressure: " + '0')#str(test))
+        self.o2label.setText("o2:" + '0')#str(o2_val))
+        self.flowlabel.setText('Flow:'+'0')       
         Bstart.clicked.connect(self.on_process)
-        self.layout.addWidget(Bstart,5,3)
+        self.layout.addWidget(Bstart,5,2)
         Bstart.clicked.connect(self.stop)
 
     def stop(self):
@@ -356,7 +356,7 @@ class App(QFrame):
         self.bstop.setFont(QFont('Arial', 30))
         self.bstop.setStyleSheet("background-color: grey")
         self.bstop.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.layout.addWidget(self.bstop,5,3)
+        self.layout.addWidget(self.bstop,5,2)
         self.bstop.clicked.connect(self.off_process)
         self.bstop.clicked.connect(self.stop_action)      
     def update_flow(self):
@@ -426,9 +426,9 @@ class App(QFrame):
 
         self.layout.addWidget(dial, 2,0,2,2)
         self.layout.addWidget(self.label, 4,0)
-        self.layout.addWidget(self.o2label, 1,3)
-        self.layout.addWidget(self.pressurelabel, 2,3)
-        self.layout.addWidget(self.flowlabel, 3,3)
+        self.layout.addWidget(self.o2label, 1,4)
+        self.layout.addWidget(self.pressurelabel, 2,4)
+        self.layout.addWidget(self.flowlabel, 3,4)
         #self.layout.addWidget(dummy,2,5,2,2)
         self.layout.addWidget(Bstart,5,2)
         self.layout.addWidget(Bupdate,4,2)	
