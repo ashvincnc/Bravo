@@ -135,7 +135,8 @@ class breathWorker(QThread):
         if(mod_val == 1 or mod_val == 5):
             self.pressureCycleValue = self.readPressureValues(pressPercent,oxyPercent)
         if(mod_val == 4):
-            self.pressureCycleValue = self.readPressureValues(502,1)
+            pressure_pdata = pressure_pdata*50
+            self.pressureCycleValue = self.readPressureValues(pressure_pdata,oxyPercent)
         if(mod_val == 2)  :
             pressure_pdata = pressure_pdata*30
             self.pressureCycleValue = self.readPressureValues(pressure_pdata,oxyPercent)
@@ -2037,7 +2038,7 @@ class App(QFrame):
         self.layout.addWidget(self.lalarm,0,0)
          
          
-        self.lgas = QLabel('Gas-Pr')
+        self.lgas = QLabel('Air-Pr')
         self.lgas.setFont(QFont('Arial', 20))
         self.lgas.setStyleSheet("color: white;  background-color: black")
         self.lgas.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
