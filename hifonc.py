@@ -430,8 +430,8 @@ class App(QFrame):
         self.layout.addWidget(self.pressurelabel, 2,3)
         self.layout.addWidget(self.flowlabel, 3,3)
         #self.layout.addWidget(dummy,2,5,2,2)
-        self.layout.addWidget(Bstart,5,3)
-        self.layout.addWidget(Bupdate,4,3)	
+        self.layout.addWidget(Bstart,5,2)
+        self.layout.addWidget(Bupdate,4,2)	
   
         self.horizontalGroupBox.setLayout(self.layout)
 
