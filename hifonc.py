@@ -309,11 +309,11 @@ class App(QFrame):
         try:
             o2_val = round(o2_val,1)
             if(self.off == 0):
-                self.pressurelabel.setText("Pressure:" + str(test))
-                self.o2label.setText("o2:" + str(o2_val))
+                self.pressurelabel.setText("Pressure: " + str(test))
+                self.o2label.setText("o2: " + str(o2_val))
             if(self.off == 1):
-                self.pressurelabel.setText("Pressure:")
-                self.o2label.setText("o2:")
+                self.pressurelabel.setText("Pressure: ")
+                self.o2label.setText("o2: ")
         except:
             f = 0
 
@@ -346,7 +346,7 @@ class App(QFrame):
         Bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
         self.pressurelabel.setText("pressure: " + '0')#str(test))
         self.o2label.setText("o2:" + '0')#str(o2_val))
-        self.flowlabel.setText('Flow:'+'0')       
+        self.flowlabel.setText('Flow: '+'0')       
         Bstart.clicked.connect(self.on_process)
         self.layout.addWidget(Bstart,5,2)
         Bstart.clicked.connect(self.stop)
@@ -362,7 +362,7 @@ class App(QFrame):
     def update_flow(self):
         global volume_pdata, value
         volume_pdata = value
-        self.flowlabel.setText('Flow:'+str(volume_pdata))
+        self.flowlabel.setText('Flow: '+str(volume_pdata))
 
          
     def createGridLayout(self):
