@@ -343,7 +343,7 @@ class App(QFrame):
         GPIO.output(26,GPIO.HIGH)
         
         self.pressurelabel.setText("pressure: " + '0')#str(test))
-        self.o2label.setText("o2:" + '0')#str(o2_val))
+        self.o2label.setText("o2: " + '0')#str(o2_val))
         self.flowlabel.setText('Flow: '+'0')
       
 
@@ -406,21 +406,21 @@ class App(QFrame):
 
         # creating a label
         self.label = QLabel("Flow Value", self)
-        self.label.setFont(QFont('Arial', 30))
+        self.label.setFont(QFont('Arial', 40))
         self.label.setStyleSheet("color: white;  background-color: black")
         self.label.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
         #o2 label
         self.o2label = QLabel("o2:")
-        self.o2label.setFont(QFont('Arial', 30))
+        self.o2label.setFont(QFont('Arial', 40))
         self.o2label.setStyleSheet("color: white;  background-color: black")
 
         self.pressurelabel = QLabel("Pressure:")
-        self.pressurelabel.setFont(QFont('Arial', 30))
+        self.pressurelabel.setFont(QFont('Arial', 40))
         self.pressurelabel.setStyleSheet("color: white;  background-color: black")
 
         self.flowlabel = QLabel("Flow")
-        self.flowlabel.setFont(QFont('Arial', 30))
+        self.flowlabel.setFont(QFont('Arial', 40))
         self.flowlabel.setStyleSheet("color: white;  background-color: black")
 
         self.bstart = QPushButton('Start')          #start button
