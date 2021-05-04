@@ -408,7 +408,7 @@ class App(QFrame):
         self.label = QLabel("Flow Value", self)
         self.label.setFont(QFont('Arial', 30))
         self.label.setStyleSheet("color: white;  background-color: black")
-        self.label.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        self.label.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
         #o2 label
         self.o2label = QLabel("o2:")
