@@ -286,6 +286,7 @@ class App(QFrame):
         self.bthThread.stopSignal.connect(self.bthThread.stop)
         self.beThread = backendWorker('hello')
         self.beThread.stopSignal.connect(self.beThread.stop)
+        self.on = 0
         
     def initUI(self):
         global start
@@ -312,15 +313,15 @@ class App(QFrame):
             o2_val = round(o2_val,1)
             if(self.off == 0):
                 self.pressurelabel.setText("Pressure: " + str(test))
-                self.o2label.setText("o2: " + str(o2_val))
+                self.o2label.setText("Fio2: " + str(o2_val))
             if(self.off == 1):
                 self.pressurelabel.setText("Pressure: ")
-                self.o2label.setText("o2: ")
+                self.o2label.setText("Fio2: ")
         except:
             f = 0
 
     def on_process(self):
-        
+        global volume_pdata, value
         self.bstart.setText('STOP')
         self.bthThread.update_pwm_Data()
         self.beThread.running = True
@@ -329,6 +330,10 @@ class App(QFrame):
         self.bthThread.start()
         self.on = 1
         self.off = 0
+        #volume_pdata = self.label.text()
+        volume_pdata = value
+        self.label.setText("Flow: " + str(value))
+        self.flowlabel.setText('Flow: '+str(volume_pdata))
     def off_process(self):
 
         #print('Stop')
@@ -336,24 +341,25 @@ class App(QFrame):
         self.on = 0
         self.off = 1
         #time.sleep(1)
+        self.Bupdate.hide()
         self.beThread.stopSignal.emit()
         self.bthThread.stopSignal.emit()
         
         GPIO.output(14,GPIO.HIGH)
         GPIO.output(26,GPIO.HIGH)
         
-        self.pressurelabel.setText("pressure: " + '0')#str(test))
-        self.o2label.setText("o2: " + '0')#str(o2_val))
+        self.pressurelabel.setText("Pressure: " + '0')#str(test))
+        self.o2label.setText("Fio2: " + '0')#str(o2_val))
         self.flowlabel.setText('Flow: '+'0')
+        
       
-
     def stop_action(self):
         Bstart = QPushButton('Start')          #start button
         Bstart.setFont(QFont('Arial', 30))
         Bstart.setStyleSheet("background-color: white")
         Bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.pressurelabel.setText("pressure: " + '0')#str(test))
-        self.o2label.setText("o2:" + '0')#str(o2_val))
+        self.pressurelabel.setText("Pressure: " + '0')#str(test))
+        self.o2label.setText("Fio2:" + '0')#str(o2_val))
         self.flowlabel.setText('Flow: '+'0')       
         Bstart.clicked.connect(self.on_process)
         self.layout.addWidget(Bstart,5,2)
@@ -385,9 +391,13 @@ class App(QFrame):
         global volume_pdata, value
         volume_pdata = value
         self.flowlabel.setText('Flow: '+str(volume_pdata))
+        self.Bupdate.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #20BEC6; padding: 4px;")
 
          
     def createGridLayout(self):
+        
+        global volume_pdata
+        
         self.vertical =  QVBoxLayout()
         self.vert_flow = QVBoxLayout()
         self.vertical_label =  QVBoxLayout()
@@ -411,41 +421,51 @@ class App(QFrame):
         self.label.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
         #o2 label
-        self.o2label = QLabel("o2:")
+        self.o2label = QLabel("Fio2:")
         self.o2label.setFont(QFont('Arial', 40))
-        self.o2label.setStyleSheet("color: white;  background-color: black")
+        #self.o2label.setStyleSheet("color: white;  background-color: black")
+        self.o2label.setStyleSheet("background-color: black; color: white; font-weight: bold; border-style: outset; border-width: 4px; border-radius: 19px; border-color: #20BEC6; padding: 4px;")
 
         self.pressurelabel = QLabel("Pressure:")
         self.pressurelabel.setFont(QFont('Arial', 40))
-        self.pressurelabel.setStyleSheet("color: white;  background-color: black")
+        #self.pressurelabel.setStyleSheet("color: white;  background-color: black")
+        self.pressurelabel.setStyleSheet("background-color: black; color: white; font-weight: bold; border-style: outset; border-width: 4px; border-radius: 19px; border-color: #20BEC6; padding: 4px;")
 
         self.flowlabel = QLabel("Flow")
         self.flowlabel.setFont(QFont('Arial', 40))
-        self.flowlabel.setStyleSheet("color: white;  background-color: black")
+        self.flowlabel.setStyleSheet("background-color: black; color: white; font-weight: bold; border-style: outset; border-width: 4px; border-radius: 19px; border-color: #20BEC6; padding: 4px;")
 
-        self.bstart = QPushButton('Start')          #start button
+        self.bstart = QPushButton('START')          #start button
         self.bstart.setFont(QFont('Arial', 30))
         self.bstart.setStyleSheet("background-color: white")
-        self.bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.bstart.setStyleSheet("background-color: white; font-weight: bold; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #20BEC6; padding: 4px;")
         self.bstart.clicked.connect(self.start_in)
         self.bstart.clicked.connect(self.start)
 
-        Bupdate = QPushButton('Update')          #start button
-        Bupdate.setFont(QFont('Arial', 30))
-        Bupdate.setStyleSheet("background-color: white")
-        Bupdate.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        Bupdate.clicked.connect(self.update_flow)
+        self.Bupdate = QPushButton('Update Flow')          #start button
+        self.Bupdate.setFont(QFont('Arial', 30))
+        #Bupdate.setStyleSheet("background-color: black")
+        self.Bupdate.setStyleSheet("background-color: white; font-weight: bold; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #20BEC6; padding: 4px;")
+        self.Bupdate.clicked.connect(self.update_flow)
+        self.Bupdate.hide()
         # making label multiline
         self.label.setWordWrap(True)
 
         # method called by the dial
         def dial_method():
             global volume_pdata, value
-
             value = dial.value()
+            if self.on == 0:
+                volume_pdata = value
+                #print(volume_pdata)
+                #self.flowlabel.setText('Flow: '+str(volume_pdata))
+                self.Bupdate.hide()
+            if self.on == 1:
+                self.Bupdate.show()
+                self.Bupdate.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #20BEC6; padding: 4px;")
          #   print('vol',volume_pdata)
              
-            self.label.setText("Flow:" + str(value))
+            self.label.setText("Flow: " + str(value))
             
 
         dummy = QLabel("HFFF")
@@ -453,18 +473,20 @@ class App(QFrame):
 
         self.vertical.addWidget(dial)
         self.vert_flow.addWidget(self.label)
-        self.vertical_label.addWidget(self.o2label)
-        self.vertical_label.addWidget(self.pressurelabel)
-        self.vertical_label.addWidget(self.flowlabel)
+        #self.vertical_label.addWidget(self.o2label)
+        #self.vertical_label.addWidget(self.pressurelabel)
+        #self.vertical_label.addWidget(self.flowlabel)
        # self.layout.addWidget(dummy,2,5,2,2)
         self.h_box.addWidget(self.bstart)
-        self.u_box.addWidget(Bupdate)
+        self.u_box.addWidget(self.Bupdate)
 
-        self.layout.addLayout(self.vertical, 0,0)
-        self.layout.addLayout(self.vert_flow, 1,0)
-        self.layout.addLayout(self.vertical_label, 0,1)
-        self.layout.addLayout(self.h_box,2,1)
-        self.layout.addLayout(self.u_box,1,1)	
+        self.layout.addLayout(self.vertical,0,0,2,1)
+        self.layout.addLayout(self.vert_flow, 2,0)
+        self.layout.addWidget(self.o2label, 0,1)
+        self.layout.addWidget(self.pressurelabel, 1,1)
+        self.layout.addWidget(self.flowlabel, 2,1)
+        self.layout.addLayout(self.h_box,3,1)
+        self.layout.addLayout(self.u_box,3,0)	
   
         self.horizontalGroupBox.setLayout(self.layout)	
 
