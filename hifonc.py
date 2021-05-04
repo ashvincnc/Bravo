@@ -22,6 +22,8 @@ global ini
 ini = 0
 global o2_val
 o2_val = 0
+global start
+start = 0
 
 class breathWorker(QThread):
     
@@ -318,7 +320,8 @@ class App(QFrame):
             f = 0
 
     def on_process(self):
-
+        
+        self.bstart.setText('STOP')
         self.bthThread.update_pwm_Data()
         self.beThread.running = True
         self.bthThread.running = True
@@ -328,7 +331,8 @@ class App(QFrame):
         self.off = 0
     def off_process(self):
 
-        print('Stop')
+        #print('Stop')
+        self.bstart.setText('Start')
         self.on = 0
         self.off = 1
         #time.sleep(1)
@@ -337,6 +341,10 @@ class App(QFrame):
         
         GPIO.output(14,GPIO.HIGH)
         GPIO.output(26,GPIO.HIGH)
+        
+        self.pressurelabel.setText("pressure: " + '0')#str(test))
+        self.o2label.setText("o2:" + '0')#str(o2_val))
+        self.flowlabel.setText('Flow: '+'0')
       
 
     def stop_action(self):
@@ -358,7 +366,21 @@ class App(QFrame):
         self.bstop.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
         self.layout.addWidget(self.bstop,5,2)
         self.bstop.clicked.connect(self.off_process)
-        self.bstop.clicked.connect(self.stop_action)      
+        self.bstop.clicked.connect(self.stop_action) 
+
+    def start(self):
+        global start
+        print(start)
+        
+        if start%2 == 0:
+            s = self.off_process()
+        if start%2 != 0:
+            s = self.on_process()
+    
+    def start_in(self):
+        global start
+        start += 1  
+
     def update_flow(self):
         global volume_pdata, value
         volume_pdata = value
@@ -366,8 +388,13 @@ class App(QFrame):
 
          
     def createGridLayout(self):
-        self.horizontalGroupBox = QGroupBox()
+        self.vertical =  QVBoxLayout()
+        self.vert_flow = QVBoxLayout()
+        self.vertical_label =  QVBoxLayout()
+        self.h_box = QHBoxLayout()
+        self.u_box = QHBoxLayout()
         self.layout = QGridLayout()
+        self.horizontalGroupBox = QGroupBox()
         #self.layout.setColumnStretch(1, 4)
         #self.layout.setColumnStretch(2, 4)
         
@@ -396,12 +423,12 @@ class App(QFrame):
         self.flowlabel.setFont(QFont('Arial', 30))
         self.flowlabel.setStyleSheet("color: white;  background-color: black")
 
-        Bstart = QPushButton('Start')          #start button
-        Bstart.setFont(QFont('Arial', 30))
-        Bstart.setStyleSheet("background-color: white")
-        Bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        Bstart.clicked.connect(self.on_process)
-        Bstart.clicked.connect(self.stop)
+        self.bstart = QPushButton('Start')          #start button
+        self.bstart.setFont(QFont('Arial', 30))
+        self.bstart.setStyleSheet("background-color: white")
+        self.bstart.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.bstart.clicked.connect(self.start_in)
+        self.bstart.clicked.connect(self.start)
 
         Bupdate = QPushButton('Update')          #start button
         Bupdate.setFont(QFont('Arial', 30))
@@ -424,16 +451,22 @@ class App(QFrame):
         dummy = QLabel("HFFF")
         dummy.setStyleSheet("color: black;  background-color: black")
 
-        self.layout.addWidget(dial, 2,0,2,2)
-        self.layout.addWidget(self.label, 4,0)
-        self.layout.addWidget(self.o2label, 1,4)
-        self.layout.addWidget(self.pressurelabel, 2,4)
-        self.layout.addWidget(self.flowlabel, 3,4)
-        #self.layout.addWidget(dummy,2,5,2,2)
-        self.layout.addWidget(Bstart,5,2)
-        self.layout.addWidget(Bupdate,4,2)	
+        self.vertical.addWidget(dial)
+        self.vert_flow.addWidget(self.label)
+        self.vertical_label.addWidget(self.o2label)
+        self.vertical_label.addWidget(self.pressurelabel)
+        self.vertical_label.addWidget(self.flowlabel)
+       # self.layout.addWidget(dummy,2,5,2,2)
+        self.h_box.addWidget(self.bstart)
+        self.u_box.addWidget(Bupdate)
+
+        self.layout.addLayout(self.vertical, 0,0)
+        self.layout.addLayout(self.vert_flow, 1,0)
+        self.layout.addLayout(self.vertical_label, 0,1)
+        self.layout.addLayout(self.h_box,2,1)
+        self.layout.addLayout(self.u_box,1,1)	
   
-        self.horizontalGroupBox.setLayout(self.layout)
+        self.horizontalGroupBox.setLayout(self.layout)	
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
