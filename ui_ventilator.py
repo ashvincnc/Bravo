@@ -17,6 +17,7 @@ global pressure_pdata
 global fio2_pdata
 global lpressure
 import threading
+import multiprocessing
 import RPi.GPIO as GPIO
 global ini,kz,ex_time
 ex_time = 1.5
@@ -28,6 +29,7 @@ GPIO.setmode(GPIO.BCM)
 import Adafruit_ADS1x15
 
 import sys
+from pyky040 import pyky040
 
 global gf,ti,sangi
 ti = 0
@@ -46,6 +48,7 @@ global pressure_support
 global pressure_val,volume_val,fio_val,peep_val
 global in_time,out_time
 global graph,ps_change
+graph = 0
 global mod_val,mod_val_data,value
 value = 0
 mod_val_data = 0
@@ -56,9 +59,32 @@ global trigger_data,ps_control
 trigger_data = -3
 global currentPo
 currentPo = 0
+global sen_data
+global sensor_read
+sensor_read = True
 
 
 GAIN = 1
+
+def read_sensor():
+    global sen_data
+
+    while True:
+        sen_data = [0]*4
+        for i in range(4):
+            try:  
+                sen_data[i] = adc.read_adc(i, gain=GAIN)
+                #print('pressure {}| oxy{}| data{}| data{}'.format(data[0],data[2],data[1],data[3]))
+                #time.sleep(0.5)
+                
+            except:
+                print('i2c error')               
+        oxy = sen_data[2]        
+        print('pressure {}| oxy{}| data{}| data{}'.format(sen_data[0],oxy,sen_data[1],sen_data[3])) 
+
+
+sen_thread = threading.Thread(target=read_sensor)
+sen_thread.start()
 
 
 class breathWorker(QThread):
@@ -342,6 +368,7 @@ class breathWorker(QThread):
 
 
                 global graph,i_rr,ti
+                global sensor_read
                 
                 print("self.running.loop")
                 self.start_time = time.time()
@@ -350,10 +377,10 @@ class breathWorker(QThread):
                 
                 self.pPWM.ChangeDutyCycle(self.pressureCycleValue[0])
                 self.o2PWM.ChangeDutyCycle(self.pressureCycleValue[1])
-                
+                sensor_read = False
                 GPIO.output(26,GPIO.HIGH)
                 GPIO.output(14,GPIO.LOW)
-
+                sensor_read = True
                 self.breathStatus = 0
                 i_rr += 1
 
@@ -368,6 +395,7 @@ class breathWorker(QThread):
     def pwm_out(self):
                 global graph,peep_val,ti,currentPo
                 global rr_value
+                global sensor_read
                 self.peep = int(peep_val)
            #     print('peep',peep_val)
            #     print(self.peep)
@@ -383,6 +411,7 @@ class breathWorker(QThread):
                 self.o2PWM.ChangeDutyCycle(self.peep)
                 self.pPWM.ChangeDutyCycle(self.peep)
           #      print('peep',self.peep)
+                sensor_read = False
                 GPIO.output(26,GPIO.LOW)
                 
                 if(peep_val >= 4 and currentPo == 1):
@@ -397,7 +426,7 @@ class breathWorker(QThread):
                 if(mod_val == 1 or mod_val == 2 or mod_val ==3):
            #         ti = (int(self.end_time) - int(self.start_time))
                      rr_value = int(60/(int(self.end_time) - int(self.start_time)))
-
+                sensor_read = True
     def pwm_ps_out(self):
                 global graph,peep_val,ti
                 global rr_value             
@@ -500,6 +529,7 @@ class backendWorker(QThread):
         self.seam = []
         #GPIO.setup(4, GPIO.OUT)
 
+
     def stop(self):
         print("stopping thread")
         self.running = False
@@ -526,6 +556,7 @@ class backendWorker(QThread):
         data2transfer = self.dataUpdate["pressure"]+','+self.dataUpdate["intime"]+','+self.dataUpdate["outtime"]+','+self.dataUpdate["peep"]+','+self.dataUpdate["fio2"]
         print("DEBUG: "+data2transfer)
         #self.ser1.write(data2transfer.encode())
+    
 
     def getdata(self):
         global gf,control,lamda_b,lavs,in_time,ex_time
@@ -534,6 +565,7 @@ class backendWorker(QThread):
         global firstvalue,trigger_data,sangi
         global graph,mod_val_data,currentP,currentPo
         global ps_change,kz,value,peep_val
+        global sen_data
         currentPressure = 0
         ko = 0
         
@@ -542,28 +574,23 @@ class backendWorker(QThread):
         pressured = []
         
 #        print('getdata')
-        data = [0]*4
+        
         trigger = 2 * trigger_data
         trigger = abs(trigger)
 #        print('trigger',trigger)
-        endtime = time.time()+0.1
-        while(time.time()<endtime):
-            
-            for i in range(4):
-                try:  
-                    data[i] = adc.read_adc(i, gain=GAIN)
-           #         print('i ,data',i,data[i])
-                except:
-                    print('i2c error')
-                
+        
+            #print('data',data[2])
          #   data_s = data.rstrip()
          #   data_string = str(data_s)
         #    data = list(data_string.split(","))
             #sleep(0.3)
-            pressurel = []
+        data = [0]*4
+        data[0] = sen_data[0]
+        data[2] = sen_data[2]
+        pressurel = []
             
-            pressurel.append(int(data[0])/8000)
-            pressured.append(int(data[0])/8000)
+        pressurel.append(int(data[0])/8000)
+        pressured.append(int(data[0])/8000)
    #         print('presss',pressurel)
             #time.sleep(0.5)
    #     if(graph == 2):
@@ -779,7 +806,9 @@ class backendWorker(QThread):
             self.dataDict["Dpress+"].append(sss)
 #            self.seam.clear()
         #print('sen',data )
-        self.dataDict["o2conc"].append(float(data[3])*0.1276)
+        oxy     = data[2]
+        oxygen = (oxy*100)/60
+        self.dataDict["o2conc"].append(oxy)     # float(data[2])*3)  #0.1276)
 #        print('datadict', self.dataDict)
  #       print('g',self.dataDict)
        
@@ -902,6 +931,7 @@ class App(QFrame):
         self.beThread.stopSignal.connect(self.beThread.stop)
         self.update_parameters()
         self.graph()
+        self.encoder()
         #self.graph2()
         
         
@@ -1190,12 +1220,13 @@ class App(QFrame):
               #  o2s = str(data_m["o2conc"][-1])
                 o2 = int(data_m["o2conc"][-1]) #"{.:2f}".format(o2s)
       #          print('o2', o2)
+                
                 o2s = "{:.1f}".format(o2)
-                if(o2 > 100):
-                    self.laprd.setStyleSheet("background-color: red")
+                if(o2 > 100 and o2 !=0):
+                    self.laprd.setStyleSheet("background-color: red; color: white")
                     self.laprd.setText(str(o2s))
-                if(o2 < 100):
-                    self.laprd.setStyleSheet("background-color: green")
+                if(o2 < 100 and o2 !=0):
+                    self.laprd.setStyleSheet("background-color: green; color: white")
                     self.laprd.setText(str(o2s))
                 ###
                 '''    
@@ -1315,6 +1346,7 @@ class App(QFrame):
         self.setLayout(windowLayout)
         
         self.show()
+        #self.showFullScreen()
     def readSettings(self,i):
         global mod_val
         params = ["pressure", "volume", "bpm", "peep", "fio2"]
@@ -1436,11 +1468,90 @@ class App(QFrame):
         self.lbpm.setText(str(self.settings["bpm"]["default"]))
         self.lpeep.setText(str(self.settings["peep"]["default"]))
         self.lfio2.setText(str(self.settings["fio2"]["default"]))
+
+    def p_callback(self, i):
+
+        if(self.p_en == True):
+            v = self.plabel.text()
+            value = int(v) + int(i)
+            self.slp.setValue(value)
+            
+        if(self.b_en == True):
+            
+            v = self.bpmlabel.text()
+            value = int(v) + int(i)
+            self.slbpm.setValue(value)
+            
+        if(self.pe_en == True):
+            v = self.peeplabel.text()
+            value = int(v) + int(i)
+            self.slpeep.setValue(value)
+        
+        if(self.ti_en == True):
+            v = self.ti.text()
+            value = int(v) + int(i)
+            self.slti.setValue(value)
+            
+        if(self.f_en == True):
+            v = self.fio2label.text()
+            value = int(v) + int(i)
+            self.slfio2.setValue(value)
+         
+        if(self.v_en == True):
+            v = self.vlabel.text()
+            if(i == 1):
+                value = int(v) + int(i) + 49
+            if(i == -1):
+                value = int(v) + int(i) - 49
+                
+            self.slv.setValue(value)  
+        #print('en_v',value)
+
+    def s_callback(self):
+        if(self.p_en == True):
+            self.pupdate_val.click()
+            
+        if(self.b_en == True):
+            self.bupdate_val.click()
+            
+        if(self.pe_en == True):
+            self.peepupdate_val.click()
+        
+        if(self.ti_en == True):
+            self.tiupdate_val.click()
+            
+        if(self.f_en == True):
+            self.fupdate_val.click()
+         
+        if(self.v_en == True):
+            self.vupdate_val.click() 
+
+    def encoder(self):
+        
+        self.p_en = False
+        self.b_en = False
+        self.pe_en = False
+        self.ti_en = False
+        self.fi_en = False
+        self.v_en = False
+        self.f_en = False
+        self.en = pyky040.Encoder(CLK=17, DT=18, SW=27)
+        self.en.setup(scale_min=-1, scale_max=1, step=2, chg_callback=self.p_callback, sw_callback = self.s_callback)
+        #t = p_en.watch
+        #self.en_thread = multiprocessing.Process(self.p_thread)
+        self.en_thread = threading.Thread(target=self.en.watch)
+        self.en_thread.start()
+        
         
     def pressure_set(self):
         global mod_val
-
-       
+        v = self.lpressure.text()
+        self.plabel = QLabel(v, self)
+        self.plabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        self.plabel.setMinimumWidth(80)
+        self.plabel.setFont(QFont('Arial', 25))
+        self.plabel.setStyleSheet("color: white;  background-color: black")
+        
         self.slp = QSlider(Qt.Vertical, self)
         self.slp.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
         
@@ -1452,16 +1563,12 @@ class App(QFrame):
         self.slp.setFocusPolicy(Qt.StrongFocus)
         self.slp.setPageStep(1)
         v = self.lpressure.text()
+        #self.lpressure.setText(str(v))
         self.slp.setValue(int(v))
         self.slp.valueChanged.connect(self.pupdateLabel)
         self.slp.setTickPosition(QSlider.TicksBelow)
         self.slp.setTickInterval(5)
 
-        self.plabel = QLabel(v, self)
-        self.plabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.plabel.setMinimumWidth(80)
-        self.plabel.setFont(QFont('Arial', 25))
-        self.plabel.setStyleSheet("color: white;  background-color: black")
 
         self.layout.addWidget( self.slp,2,6,4,1,alignment=Qt.AlignRight)
         self.layout.addWidget(self.plabel,6,6)
@@ -1472,6 +1579,8 @@ class App(QFrame):
         self.pupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.pupdate_val,7,6)
         self.pupdate_val.clicked.connect(self.update_setp)
+        self.p_en = True
+
         
     def update_setp(self):
         global pressure_val
@@ -1486,7 +1595,10 @@ class App(QFrame):
             self.lpressure.setText(v)
            
         pressure_val = int(self.lpressure.text())
-        print('p update',pressure_val)
+        #print('p update',pressure_val)
+        self.p_en = False
+        #self.p_en = pyky040.Encoder(CLK=7, DT=8, SW=6)
+        #self.en_thread.join()
         self.slp.deleteLater()
         self.plabel.deleteLater()
         self.pupdate_val.deleteLater()
@@ -1495,7 +1607,14 @@ class App(QFrame):
         self.pressure_values = self.plabel.text()
 
     def bpm_set(self):
-
+        
+        v = int(self.lbpm.text())
+        self.bpmlabel = QLabel(str(v), self)
+        self.bpmlabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        self.bpmlabel.setMinimumWidth(80)
+        self.bpmlabel.setFont(QFont('Arial', 25))
+        self.bpmlabel.setStyleSheet("color: white;  background-color: black")
+        
         self.slbpm = QSlider(Qt.Vertical, self) 
         self.slbpm.setRange(1, 20)
         self.slbpm.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
@@ -1522,6 +1641,7 @@ class App(QFrame):
         self.bupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.bupdate_val,7,6)
         self.bupdate_val.clicked.connect(self.update_setbpm)
+        self.b_en = True
         
     def update_setbpm(self):
         global bpm_val
@@ -1536,7 +1656,8 @@ class App(QFrame):
         
         self.slbpm.deleteLater()
         self.bpmlabel.deleteLater()
-        self.bupdate_val.deleteLater()    
+        self.bupdate_val.deleteLater()
+        self.b_en = False
         #self.update_parameters()
     
     def bpmupdateLabel(self, value):      
@@ -1546,6 +1667,13 @@ class App(QFrame):
 
     def peep_set(self):
         global peep_val
+
+        v = self.lpeep.text()
+        self.peeplabel = QLabel(str(v), self)
+        self.peeplabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        self.peeplabel.setMinimumWidth(80)
+        self.peeplabel.setFont(QFont('Arial', 25))
+        self.peeplabel.setStyleSheet("color: white;  background-color: black")
 
         self.slpeep = QSlider(Qt.Vertical, self) 
         self.slpeep.setRange(0, 20)
@@ -1558,11 +1686,7 @@ class App(QFrame):
         self.slpeep.setTickPosition(QSlider.TicksBelow)
         self.slpeep.setTickInterval(5)
 
-        self.peeplabel = QLabel(str(peep_val), self)
-        self.peeplabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.peeplabel.setMinimumWidth(80)
-        self.peeplabel.setFont(QFont('Arial', 25))
-        self.peeplabel.setStyleSheet("color: white;  background-color: black")
+
         a = self.peeplabel.text()
 ####        print('a',a)
         self.layout.addWidget( self.slpeep,2,6,4,1,alignment=Qt.AlignRight)
@@ -1580,6 +1704,7 @@ class App(QFrame):
         self.peepupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.peepupdate_val,7,6)
         self.peepupdate_val.clicked.connect(self.update_setpeep)
+        self.pe_en = True
         
     def update_setpeep(self):
         global peep_val
@@ -1595,6 +1720,7 @@ class App(QFrame):
         self.slpeep.deleteLater()
         self.peeplabel.deleteLater()
         self.peepupdate_val.deleteLater()
+        self.pe_en = False
         #self.update_parameters()
     
     def peepupdateLabel(self, value):
@@ -1629,6 +1755,7 @@ class App(QFrame):
         self.tiupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.tiupdate_val,7,6)
         self.tiupdate_val.clicked.connect(self.update_setti)
+        self.ti_en = True
         
     def update_setti(self):
         global ti_val
@@ -1641,6 +1768,7 @@ class App(QFrame):
         self.slti.deleteLater()
         self.tilabel.deleteLater()
         self.tiupdate_val.deleteLater()
+        self.ti_en = False
         #self.update_parameters()
     
     def tiupdateLabel(self, value):      
@@ -1677,6 +1805,7 @@ class App(QFrame):
         self.fupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.fupdate_val,7,6)
         self.fupdate_val.clicked.connect(self.update_setfio2)
+        self.f_en = True
         
     def update_setfio2(self):
         global fio_val
@@ -1691,6 +1820,7 @@ class App(QFrame):
         self.slfio2.deleteLater()
         self.fio2label.deleteLater()
         self.fupdate_val.deleteLater()
+        self.f_en = False
         #self.update_parameters()
     
     def fio2updateLabel(self, value):      
@@ -1752,6 +1882,7 @@ class App(QFrame):
         self.vupdate_val.setStyleSheet("background-color: red")
         self.layout.addWidget(self.vupdate_val,7,6)
         self.vupdate_val.clicked.connect(self.lvolume_set)
+        self.v_en = True
         
     def update_set(self):
         global pressure_val,volume_val,fio_val,peep_val
@@ -1785,6 +1916,7 @@ class App(QFrame):
         self.label.deleteLater()
         self.update_val.deleteLater()
         self.update_parameters()
+        self.v_en = False
     
         
     def volume_update(self, value):
@@ -1807,6 +1939,7 @@ class App(QFrame):
         self.vlabel.deleteLater()
         self.vupdate_val.deleteLater()
         self.update_parameters()
+        self.v_en = False
     
     def bpm_update(self):
         self.bpm_value = True
@@ -2381,7 +2514,7 @@ class App(QFrame):
         self.lgasd.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.lgasd,1,1)
 
-        self.lapr = QLabel('O2 %')
+        self.lapr = QLabel('o2 %')
         self.lapr.setFont(QFont('Arial', 20))
         self.lapr.setStyleSheet("color: white;  background-color: black")
         self.lapr.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
