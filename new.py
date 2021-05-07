@@ -1,33 +1,3 @@
-Skip to content
-Search or jump to…
-
-Pull requests
-Issues
-Marketplace
-Explore
- 
-@deepaklav 
-SilambarasanR
-/
-Bravo
-1
-00
-Code
-Issues
-Pull requests
-Actions
-Projects
-Wiki
-Security
-Insights
-Bravo/ui_ventilator.py /
-@raaghul-r
-raaghul-r Add files via upload
-Latest commit d5477ee 10 hours ago
- History
- 1 contributor
-2571 lines (2119 sloc)  92.2 KB
-  
 import sys
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import *
