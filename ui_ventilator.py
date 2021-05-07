@@ -27,7 +27,7 @@ global rap,data_line
 rap = 0
 GPIO.setmode(GPIO.BCM)
 import Adafruit_ADS1x15
-
+from pyky040 import pyky040
 import sys
 
 global gf,ti,sangi
@@ -882,6 +882,7 @@ class App(QFrame):
         self.beThread.stopSignal.connect(self.beThread.stop)
         self.update_parameters()
         self.graph()
+        self.encoder()
         #self.graph2()
         
         
@@ -1427,10 +1428,89 @@ class App(QFrame):
         self.lpeep.setText(str(self.settings["peep"]["default"]))
         self.lfio2.setText(str(self.settings["fio2"]["default"]))
         
+    def p_callback(self, i):
+
+        if(self.p_en == True):
+            v = self.plabel.text()
+            value = int(v) + int(i)
+            self.slp.setValue(value)
+            
+        if(self.b_en == True):
+            
+            v = self.bpmlabel.text()
+            value = int(v) + int(i)
+            self.slbpm.setValue(value)
+            
+        if(self.pe_en == True):
+            v = self.peeplabel.text()
+            value = int(v) + int(i)
+            self.slpeep.setValue(value)
+        
+        if(self.ti_en == True):
+            v = self.ti.text()
+            value = int(v) + int(i)
+            self.slti.setValue(value)
+            
+        if(self.f_en == True):
+            v = self.fio2label.text()
+            value = int(v) + int(i)
+            self.slfio2.setValue(value)
+         
+        if(self.v_en == True):
+            v = self.vlabel.text()
+            if(i == 1):
+                value = int(v) + int(i) + 49
+            if(i == -1):
+                value = int(v) + int(i) - 49
+                
+            self.slv.setValue(value)  
+        #print('en_v',value)
+
+    def s_callback(self):
+        if(self.p_en == True):
+            self.pupdate_val.click()
+            
+        if(self.b_en == True):
+            self.bupdate_val.click()
+            
+        if(self.pe_en == True):
+            self.peepupdate_val.click()
+        
+        if(self.ti_en == True):
+            self.tiupdate_val.click()
+            
+        if(self.f_en == True):
+            self.fupdate_val.click()
+         
+        if(self.v_en == True):
+            self.vupdate_val.click() 
+
+    def encoder(self):
+        
+        self.p_en = False
+        self.b_en = False
+        self.pe_en = False
+        self.ti_en = False
+        self.fi_en = False
+        self.v_en = False
+        self.f_en = False
+        self.en = pyky040.Encoder(CLK=17, DT=18, SW=27)
+        self.en.setup(scale_min=-1, scale_max=1, step=2, chg_callback=self.p_callback, sw_callback = self.s_callback)
+        #t = p_en.watch
+        #self.en_thread = multiprocessing.Process(self.p_thread)
+        self.en_thread = threading.Thread(target=self.en.watch)
+        self.en_thread.start()
+    
+        
     def pressure_set(self):
         global mod_val
-
-       
+        v = self.lpressure.text()
+        self.plabel = QLabel(v, self)
+        self.plabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        self.plabel.setMinimumWidth(80)
+        self.plabel.setFont(QFont('Arial', 25))
+        self.plabel.setStyleSheet("color: white;  background-color: black")
+        
         self.slp = QSlider(Qt.Vertical, self)
         self.slp.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
         
@@ -1442,16 +1522,12 @@ class App(QFrame):
         self.slp.setFocusPolicy(Qt.StrongFocus)
         self.slp.setPageStep(1)
         v = self.lpressure.text()
+        #self.lpressure.setText(str(v))
         self.slp.setValue(int(v))
         self.slp.valueChanged.connect(self.pupdateLabel)
         self.slp.setTickPosition(QSlider.TicksBelow)
         self.slp.setTickInterval(5)
 
-        self.plabel = QLabel(v, self)
-        self.plabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.plabel.setMinimumWidth(80)
-        self.plabel.setFont(QFont('Arial', 25))
-        self.plabel.setStyleSheet("color: white;  background-color: black")
 
         self.layout.addWidget( self.slp,2,6,4,1,alignment=Qt.AlignRight)
         self.layout.addWidget(self.plabel,6,6)
@@ -1462,6 +1538,8 @@ class App(QFrame):
         self.pupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.pupdate_val,7,6)
         self.pupdate_val.clicked.connect(self.update_setp)
+        self.p_en = True
+
         
     def update_setp(self):
         global pressure_val
@@ -1476,7 +1554,10 @@ class App(QFrame):
             self.lpressure.setText(v)
            
         pressure_val = int(self.lpressure.text())
-        print('p update',pressure_val)
+        #print('p update',pressure_val)
+        self.p_en = False
+        #self.p_en = pyky040.Encoder(CLK=7, DT=8, SW=6)
+        #self.en_thread.join()
         self.slp.deleteLater()
         self.plabel.deleteLater()
         self.pupdate_val.deleteLater()
@@ -1485,7 +1566,14 @@ class App(QFrame):
         self.pressure_values = self.plabel.text()
 
     def bpm_set(self):
-
+        
+        v = int(self.lbpm.text())
+        self.bpmlabel = QLabel(str(v), self)
+        self.bpmlabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        self.bpmlabel.setMinimumWidth(80)
+        self.bpmlabel.setFont(QFont('Arial', 25))
+        self.bpmlabel.setStyleSheet("color: white;  background-color: black")
+        
         self.slbpm = QSlider(Qt.Vertical, self) 
         self.slbpm.setRange(1, 20)
         self.slbpm.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
@@ -1512,6 +1600,7 @@ class App(QFrame):
         self.bupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.bupdate_val,7,6)
         self.bupdate_val.clicked.connect(self.update_setbpm)
+        self.b_en = True
         
     def update_setbpm(self):
         global bpm_val
@@ -1526,7 +1615,8 @@ class App(QFrame):
         
         self.slbpm.deleteLater()
         self.bpmlabel.deleteLater()
-        self.bupdate_val.deleteLater()    
+        self.bupdate_val.deleteLater()
+        self.b_en = False
         #self.update_parameters()
     
     def bpmupdateLabel(self, value):      
@@ -1536,6 +1626,13 @@ class App(QFrame):
 
     def peep_set(self):
         global peep_val
+
+        v = self.lpeep.text()
+        self.peeplabel = QLabel(str(v), self)
+        self.peeplabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        self.peeplabel.setMinimumWidth(80)
+        self.peeplabel.setFont(QFont('Arial', 25))
+        self.peeplabel.setStyleSheet("color: white;  background-color: black")
 
         self.slpeep = QSlider(Qt.Vertical, self) 
         self.slpeep.setRange(0, 20)
@@ -1548,11 +1645,7 @@ class App(QFrame):
         self.slpeep.setTickPosition(QSlider.TicksBelow)
         self.slpeep.setTickInterval(5)
 
-        self.peeplabel = QLabel(str(peep_val), self)
-        self.peeplabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.peeplabel.setMinimumWidth(80)
-        self.peeplabel.setFont(QFont('Arial', 25))
-        self.peeplabel.setStyleSheet("color: white;  background-color: black")
+
         a = self.peeplabel.text()
 ####        print('a',a)
         self.layout.addWidget( self.slpeep,2,6,4,1,alignment=Qt.AlignRight)
@@ -1570,6 +1663,7 @@ class App(QFrame):
         self.peepupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.peepupdate_val,7,6)
         self.peepupdate_val.clicked.connect(self.update_setpeep)
+        self.pe_en = True
         
     def update_setpeep(self):
         global peep_val
@@ -1585,6 +1679,7 @@ class App(QFrame):
         self.slpeep.deleteLater()
         self.peeplabel.deleteLater()
         self.peepupdate_val.deleteLater()
+        self.pe_en = False
         #self.update_parameters()
     
     def peepupdateLabel(self, value):
@@ -1619,6 +1714,7 @@ class App(QFrame):
         self.tiupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.tiupdate_val,7,6)
         self.tiupdate_val.clicked.connect(self.update_setti)
+        self.ti_en = True
         
     def update_setti(self):
         global ti_val
@@ -1631,6 +1727,7 @@ class App(QFrame):
         self.slti.deleteLater()
         self.tilabel.deleteLater()
         self.tiupdate_val.deleteLater()
+        self.ti_en = False
         #self.update_parameters()
     
     def tiupdateLabel(self, value):      
@@ -1667,6 +1764,7 @@ class App(QFrame):
         self.fupdate_val.setStyleSheet("background-color: orange")
         self.layout.addWidget(self.fupdate_val,7,6)
         self.fupdate_val.clicked.connect(self.update_setfio2)
+        self.f_en = True
         
     def update_setfio2(self):
         global fio_val
@@ -1681,6 +1779,7 @@ class App(QFrame):
         self.slfio2.deleteLater()
         self.fio2label.deleteLater()
         self.fupdate_val.deleteLater()
+        self.f_en = False
         #self.update_parameters()
     
     def fio2updateLabel(self, value):      
@@ -1742,6 +1841,7 @@ class App(QFrame):
         self.vupdate_val.setStyleSheet("background-color: red")
         self.layout.addWidget(self.vupdate_val,7,6)
         self.vupdate_val.clicked.connect(self.lvolume_set)
+        self.v_en = True
         
     def update_set(self):
         global pressure_val,volume_val,fio_val,peep_val
@@ -1775,6 +1875,7 @@ class App(QFrame):
         self.label.deleteLater()
         self.update_val.deleteLater()
         self.update_parameters()
+        self.v_en = False
     
         
     def volume_update(self, value):
@@ -1797,6 +1898,7 @@ class App(QFrame):
         self.vlabel.deleteLater()
         self.vupdate_val.deleteLater()
         self.update_parameters()
+        self.v_en = False
     
     def bpm_update(self):
         self.bpm_value = True
