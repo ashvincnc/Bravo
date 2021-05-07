@@ -49,6 +49,8 @@ global pressure_val,volume_val,fio_val,peep_val
 global in_time,out_time
 global graph,ps_change
 global mod_val,mod_val_data,value
+global emergency
+emergency = 0
 value = 0
 mod_val_data = 0
 mod_val = 1
@@ -398,7 +400,7 @@ class breathWorker(QThread):
                     print('test: peep_var',test_ex,peep_val)
                     print('peep achieved:',currentPo)
                     time.sleep(1)
-                    GPIO.output(14,GPIO.LOW)
+#                    GPIO.output(14,GPIO.LOW)
                     currentPo = 0
 
                 self.breathStatus = 1
@@ -499,6 +501,8 @@ class backendWorker(QThread):
         #GPIO.setup(4, GPIO.OUT)
 
     def stop(self):
+        global emergency
+        emergency = 0
         print("stopping thread")
         self.running = False
         
@@ -673,17 +677,18 @@ class backendWorker(QThread):
             naoh = sum(death)/len(death)
             naoh = round(naoh,1)
             print('deah',naoh)
-            if(naoh <= 2.8):
-                print('aalu out')
-                emergency = 1
+            if mod_val in [1,2,3,5]:
+                if(naoh <= 2.8):
+                    print('aalu out')
+                    emergency = 1
+                else:
+                    emergency = 0
             pi = p
             pu = ((pi-2.7)/0.2)
             pu = (round(pu,1))
             currentP = pu*5
             test_ex= pu*5
-            if(ini == 0):
-                fvalue = pu*5
-                ini += 1
+
                  
             peep_var = peep_val+2
 
@@ -965,8 +970,15 @@ class App(QFrame):
     def update_plot_data(self):
         
         global data_m,rr_value,i_rr,ti,mod_val,pressure_val,pressure_pdata,two,ex_time
+        global emergency    
         a = 0
-        
+        if emergency == 1:
+            self.alarm.setText('dis-conti')
+            self.alarm.setStyleSheet("color: white;  background-color: red")
+        else:
+            self.alarm.setText('-')
+            self.alarm.setStyleSheet("color: white;  background-color: black")            
+            
         
         if self.bthThread.breathStatus == 0:
             global data_m
@@ -1349,13 +1361,16 @@ class App(QFrame):
         
         
     def stop(self):
+        
         self.bstop = QPushButton('stop')
         self.bstop.setFont(QFont('Arial', 15))
         self.bstop.setStyleSheet("background-color: grey")
         self.bstop.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
         self.layout.addWidget(self.bstop,1,6)
+
         self.bstop.clicked.connect(self.off_process)
         self.bstop.clicked.connect(self.stop_action)
+
         
     def vc(self):
         global pressure_val
@@ -2019,6 +2034,7 @@ class App(QFrame):
    #     print("pressed start button")
     #    dataFetched = self.fetchData()
     #    self.beThread.dataUpdate = dataFetched
+        self.alarm.setVisible(True)
         self.fetch_data()
         self.bthThread.update_pwm_Data()
         
@@ -2028,11 +2044,17 @@ class App(QFrame):
         self.beThread.start()
         self.bthThread.start()
         self.on = 1
+
         
     def off_process(self):
+        global emergency
   #      print("pressed stop button")
         self.item = 'None'
         self.md.setCurrentText(self.item)
+        self.alarm.setVisible(False)
+        self.alarm.setText('-')
+        self.alarm.setStyleSheet("color: white;  background-color: black")
+        emergency = 0
 #        self.lbvedata.setText('0')
 #        self.lbvedata.setText('0')
      #   print('done')
@@ -2342,7 +2364,13 @@ class App(QFrame):
         self.lalarm.setStyleSheet("color: white;  background-color: black")
         self.lalarm.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.lalarm,0,0)
-         
+        self.alarm = QLabel('-')
+        self.alarm.setFont(QFont('Arial', 20))
+        self.alarm.setStyleSheet("color: white;  background-color: black")
+        self.layout.addWidget(self.alarm,1,0)
+        
+        
+
          
         self.lgas = QLabel('Air-Pr')
         self.lgas.setFont(QFont('Arial', 20))
