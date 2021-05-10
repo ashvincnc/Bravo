@@ -250,17 +250,18 @@ class breathWorker(QThread):
                             
                             time.sleep(1)
                             print('sleep')
-                            self.pwm_ps_no()
+
 
                             graph = 1
                             print('is it')
-                            if(es == 5):
-                                es = 8
+                            
                             while(test >= es):
-                                drk = 1
+                                self.pwm_ps_no()
+                            #    drk = 1
 
                             print('pwm_ps_no')
                             if(test < es or test < 8):
+                                
                                 drk = 0#ti_value/4):
 
                             mod_val_data =0
@@ -362,7 +363,9 @@ class breathWorker(QThread):
                 
                              
                 self._inhale_event.wait(timeout=self.in_t)
+#                print('wait')
                 self.end = time.time()
+                time.sleep(0.1)
                 if(mod_val == 1 or mod_val == 2 or mod_val == 3):
                     ti = ((self.end) - (self.start_time))
                     ti = round(ti,1)
@@ -372,7 +375,7 @@ class breathWorker(QThread):
                 global graph,peep_val,ti,currentPo
                 global rr_value,test,test_ex
                 self.peep = int(peep_val)
-                GPIO.output(14,GPIO.HIGH)
+                
            #     print('peep',peep_val)
            #     print(self.peep)
            #     print("pwm_out")
@@ -397,13 +400,14 @@ class breathWorker(QThread):
                 
                 if(test_ex<= peep_val and currentPo == 1):
 #                    GPIO.output(14,GPIO.HIGH)
-                    print('test: peep_var',test_ex,peep_val)
-                    print('peep achieved:',currentPo)
+#                    print('test: peep_var',test_ex,peep_val)
+#                    print('peep achieved:',currentPo)
                     time.sleep(1)
 #                    GPIO.output(14,GPIO.LOW)
                     currentPo = 0
 
                 self.breathStatus = 1
+                GPIO.output(14,GPIO.HIGH)
                 self._exhale_event.wait(timeout=self.out_t)
                 self.end_time = time.time()
            #     print('end_time',self.end_time)
@@ -418,7 +422,7 @@ class breathWorker(QThread):
                 self.start_time = time.time()
                 self.o2PWM.ChangeDutyCycle(1)
                 self.pPWM.ChangeDutyCycle(1)
-
+                GPIO.output(14,GPIO.HIGH)
                 GPIO.output(26,GPIO.LOW)
                 self.breathStatus = 1
  #               self.o2PWM.start(0)
@@ -553,15 +557,15 @@ class backendWorker(QThread):
 ########        trigger = trigger_data
 #        trigger = abs(trigger)
 #        print('trigger',trigger)
-        endtime = time.time()+0.1
-        while(time.time()<endtime):
+#        endtime = time.time()+0.1
+#        while(time.time()<endtime):
             
-            for i in range(4):
-                try:  
-                    data[i] = adc.read_adc(i, gain=GAIN)
-           #         print('i ,data',i,data[i])
-                except:
-                    print('i2c error')
+        for i in range(4):
+            try:  
+                data[i] = adc.read_adc(i, gain=GAIN)
+       #         print('i ,data',i,data[i])
+            except:
+                print('i2c error')
                 
          #   data_s = data.rstrip()
          #   data_string = str(data_s)
@@ -597,10 +601,12 @@ class backendWorker(QThread):
             
         if(graph == 0):
             diff_pre = float(data[1])
-            print('inhale_pre',diff_pre)
+#            print('inhale_pre',diff_pre)
             try:
                 self.dataDict["Dpress+"].clear()
                 self.currentPressure_list.clear()
+                
+                
     #            print('sos')
             except:
                 drk = 1
@@ -608,6 +614,7 @@ class backendWorker(QThread):
         #    print('Inhaling')pwm
       #      pressure_support = (int(data[0])/8000)*5
     #        print('pss',pressure_support)
+            
             if(ini == 0):
                     firstvalue = pressurel[0]
 #                    print('firstvalue',firstvalue)
@@ -655,7 +662,7 @@ class backendWorker(QThread):
             pressure = (round(pressure,1))
             test = pressure*5
             test_in = pressure*5
-#            print('test',test_in)
+#            print('test',pressure)
             
             if mod_val in [2,3,4]:
                 pressure_va = pressure_val + peep_val
@@ -673,14 +680,17 @@ class backendWorker(QThread):
         if (graph == 1):
             
             diff_pre = float(data[1])
-            print('exhale_pre',diff_pre)
+#            print('exhale_pre',diff_pre)
             self.currentPressure_list.append(int(data[0])/8000)
             p = self.currentPressure_list[-1]
             death =self.currentPressure_list[:10]
-            naoh = sum(death)/len(death)
-            naoh = round(naoh,1)
+           
+            if len(death) != 1:
+                naoh = sum(death)/len(death)
+            #    print('death',death)
+                naoh = round(naoh,1)
 #            print('deah',naoh)
-            if mod_val in [1,2,3,5]:
+            if mod_val in [1,2,3,5] and len(death) != 1:
                 if(naoh <= 2.8):
 #                    print('aalu out')
                     emergency = 1
@@ -761,6 +771,7 @@ class backendWorker(QThread):
 #            print('sss',sss)
 
             self.dataDict["Dpress+"].append(self.s)
+            ini = 0
 
         self.dataDict["o2conc"].append(float(data[3])*0.1276)
 #        print('datadict', self.dataDict)
@@ -1304,6 +1315,7 @@ class App(QFrame):
         windowLayout.addWidget(self.horizontalGroupBox)
 
         self.setLayout(windowLayout)
+        self.mode_set = 2
         
         self.show()
     def readSettings(self,i):
@@ -1893,12 +1905,13 @@ class App(QFrame):
         try:
             self.lvol.setText(self.vol_v)
             volume_val = int(self.lvol.text())
+            self.slv.deleteLater()
             print('update vol',volume_val)
         except:
             v = self.vlabel.text()
             self.lvol.setText(v)
             volume_val = int(self.lvol.text())
-    
+#        print('volume')
         self.slv.deleteLater()
         self.vlabel.deleteLater()
         self.vupdate_val.deleteLater()
@@ -1943,20 +1956,22 @@ class App(QFrame):
         self.bes.showPopup()
         
     def es_value(self,value):
-        global es
+        global es,pressure_val
         
         if(value == 1):
-            es = 5
+            es = (5*pressure_val)/100
         if(value == 2):
-            es = 10
+            es = (10*pressure_val)/100
         if(value == 3):
-            es = 15
+            es = (15*pressure_val)/100
         if(value == 4):
-            es = 20           
+            es = (20*pressure_val)/100           
         if(value == 5):
-            es = 25
-        
-    
+            es = (25*pressure_val)/100
+        if(value == 'None'):
+            es = 8
+#        print('es_set',value)
+#        print('es',es)
     def ie_updated(self, value):
         #self.cb.deleteLater()
         global ie_value
@@ -2102,7 +2117,7 @@ class App(QFrame):
             #self.lmode.setText('SPONT+PS')
             mod_val = 4
 #            self.Bstart.setEnabled(True)
-            self.bes.showPopup()
+#            self.bes.showPopup()
             self.BEs.setVisible(True)
             self.Bpressure.setEnabled(True)
             self.lpressure.setVisible(True)
@@ -2144,7 +2159,7 @@ class App(QFrame):
             #self.lmode.setText('BiPAP')
             mod_val = 4
 #            self.Bstart.setEnabled(True)
-            self.bes.showPopup()
+#            self.bes.showPopup()
             self.BEs.setVisible(True)
             self.lpressure.setVisible(True)
             self.Bti.setEnabled(False)
@@ -2212,6 +2227,7 @@ class App(QFrame):
         self.Bpressure.setFont(QFont('Arial', 20))  
         self.Bpressure.setStyleSheet("background-color: white")
         self.Bpressure.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpressure.setEnabled(False)
         self.layout.addWidget(self.Bpressure,8,0)
         
         self.Rgraph = QPushButton('Refresh Graph') #GraphRefreshbutton
@@ -2258,7 +2274,7 @@ class App(QFrame):
         self.BEs.setFont(QFont('Arial', 15))  
         self.BEs.setStyleSheet("background-color: white")
         self.BEs.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.layout.addWidget(self.BEs,7,1)
+        self.layout.addWidget(self.BEs,8,1)
         self.BEs.clicked.connect(self.es_update)
         self.BEs.clicked.connect(self.es_value)
  
@@ -2581,11 +2597,11 @@ class App(QFrame):
 
         self.bes = QComboBox()
         self.bes.addItem("ES %")
+        self.bes.addItem("5")
         self.bes.addItem("10")
+        self.bes.addItem("15")
         self.bes.addItem("20")
-        self.bes.addItem("30")
-        self.bes.addItem("40")
-        self.bes.addItem("50")
+        self.bes.addItem("25")
         self.bes.setFont(QFont('Arial', 20))
         self.bes.setStyleSheet("color: black;  background-color: white")
    #     self.bes.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
