@@ -620,6 +620,7 @@ class backendWorker(QThread):
             try:
                 self.dataDict["Dpress+"].clear()
                 self.currentPressure_list.clear()
+                
     #            print('sos')
             except:
                 drk = 1
@@ -695,12 +696,13 @@ class backendWorker(QThread):
             self.currentPressure_list.append(int(data[0])/8000)
             p = self.currentPressure_list[-1]
             death =self.currentPressure_list[:10]
-            naoh = sum(death)/len(death)
-            naoh = round(naoh,1)
-            print('deah',naoh)
-            if mod_val in [1,2,3,5]:
+            if len(death) != 1:
+                naoh = sum(death)/len(death)
+                naoh = round(naoh,1)
+#            print('deah',naoh)
+            if mod_val in [1,2,3,5] and len(death) != 1:
                 if(naoh <= 2.8):
-                    print('aalu out')
+ #                   print('aalu out')
                     emergency = 1
                 else:
                     emergency = 0
@@ -779,6 +781,7 @@ class backendWorker(QThread):
 #            print('sss',sss)
 
             self.dataDict["Dpress+"].append(self.s)
+            ini = 0
             print('p_done')
         try:
                if len(oxy_val)<=2:
@@ -1358,6 +1361,7 @@ class App(QFrame):
         windowLayout.addWidget(self.horizontalGroupBox)
 
         self.setLayout(windowLayout)
+        self.mode_set = 2
         
         self.show()
     def readSettings(self,i):
