@@ -2076,7 +2076,7 @@ class App(QFrame):
     def mode_update(self):
 
       self.md = QComboBox()
-      list = ["Modes","None","VC","PC","SPONT+PS","HFONC","BiPAP"]
+      list = ["VC","PC","SPONT+PS","HFONC","BiPAP"]
       self.md.addItems(list)
 #      self.md.addItem("Modes")
 #      self.md.addItem("None")
@@ -2212,8 +2212,8 @@ class App(QFrame):
     def off_process(self):
         global emergency
   #      print("pressed stop button")
-        self.item = 'None'
-        self.md.setCurrentText(self.item)
+ #       self.item = 'None'
+ #       self.md.setCurrentText(self.item)
         self.alarm.setVisible(False)
         self.alarm.setText('-')
         self.alarm.setStyleSheet("color: white;  background-color: black")
