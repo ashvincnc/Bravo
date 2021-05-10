@@ -29,6 +29,7 @@ GPIO.setmode(GPIO.BCM)
 import Adafruit_ADS1x15
 from pyky040 import pyky040
 import sys
+global oxy_val
 
 global gf,ti,sangi
 ti = 0
@@ -61,9 +62,12 @@ trigger_data = -3
 global currentPo,Slide
 Slide = 0
 currentPo = 0
-
+global s
+s = 0
 
 GAIN = 1
+GPIO.setup(19, GPIO.OUT)
+GPIO.output(19,GPIO.HIGH) #Turning on the compressor
 
 
 class breathWorker(QThread):
@@ -531,12 +535,13 @@ class backendWorker(QThread):
 
     def getdata(self):
         global gf,control,lamda_b,lavs,in_time,ex_time
-        global ini,rap,adc,ti_val,ti_value,test
+        global ini,rap,adc,ti_val,ti_value,test,GAIN
         global pressure_support,pressure_val
         global firstvalue,trigger_data,sangi,Slide
         global graph,mod_val_data,currentP,currentPo
         global ps_change,kz,value,peep_val,test_ex
         global emergency
+        global s, oxy_val
         
          
         ko = 0
@@ -559,6 +564,7 @@ class backendWorker(QThread):
             for i in range(4):
                 try:  
                     data[i] = adc.read_adc(i, gain=GAIN)
+                    time.sleep(0.3)
            #         print('i ,data',i,data[i])
                 except:
                     print('i2c error')
@@ -568,7 +574,22 @@ class backendWorker(QThread):
         #    data = list(data_string.split(","))
             #sleep(0.3)
             pressurel = []
-            
+            #oxy_val = []
+            #oxy_val.append(int(data[2]))
+            #print('ov',oxy_val)
+            #print('s',s)
+            if s == 0:
+                print('creating')
+                oxy_val = []
+                s += 1
+            print('sensor_oxy', (data[2]))    
+            if(data[2] != 0):
+                #try:
+                #print('append_oxy')
+                oxy_val.append(data[2])
+                print('oxy_v',oxy_val)
+                #except:
+                 #   n = 1
             pressurel.append(int(data[0])/8000)
             pressured.append(int(data[0])/8000)
    #         print('presss',pressurel)
@@ -758,8 +779,41 @@ class backendWorker(QThread):
 #            print('sss',sss)
 
             self.dataDict["Dpress+"].append(self.s)
-
-        self.dataDict["o2conc"].append(float(data[3])*0.1276)
+            print('p_done')
+        try:
+               if len(oxy_val)<=2:
+                   #oxy_value = oxy_val[-1]
+                   if len(oxy_val)==2:
+                       a = oxy_val[0]
+                       b = oxy_val[1]
+                       if(a == b) and (a==16 or a==32):
+                           oxy_value = 24
+                           oxy_val = []
+                       if(a != b):    
+                           oxy_value = sum(oxy_val)/2
+                           oxy_val = []
+                   if (len(oxy_val) == 1):
+                       a = oxy_val[0]
+                       if(a == 16 or a==32):
+                           oxy_value = 24
+                   print('len of oxy',len(oxy_val))
+                   self.dataDict["o2conc"].append(int(oxy_value))
+               #if len(oxy_val)>=2:
+                #   print('getting average')
+                 #  oxy_value = sum(oxy_val[1:])/2
+                   #oxy_val.clear
+                   #oxy_val = []
+                   #self.dataDict["o2conc"].append(int(oxy_value))
+               
+        except:
+             no = 1
+        
+        #oxy_value = oxy_val[-1]
+        #print('ovv',oxy_value)
+        #self.dataDict["o2conc"].append(int(oxy_value))
+        #except:
+            #noth = 1
+             #float(data[2])) #*0.1276)
 #        print('datadict', self.dataDict)
  #       print('g',self.dataDict)
        
@@ -1140,7 +1194,8 @@ class App(QFrame):
 
         #        print('pmeen',pmeen)
           #      peep = (self.lpeep.setText(str(pmeen)))
-                self.lbpeepdata.setText(str(self.peep))
+                if(self.peep>>100): 
+                    self.lbpeepdata.setText(str(self.peep))
                 self.lrrd.setText(str(rr_value))
                 self.mean = float((self.pip * self.inhaleTime) + (float(self.peep) * self.exhaleTime))
       #          print('mean',self.mean)
@@ -1160,7 +1215,8 @@ class App(QFrame):
        #                 self.pmean = "{:.1f}".format(self.pmean)
             #            self.lbtidata.setText(str(ti))
                         self.pmean = "{:.1f}".format(self.pmean)
-                        self.lbpmeandata.setText(str(self.pmean))
+                        if (self.pmean >> 0):
+                            self.lbpmeandata.setText(str(self.pmean))
                                #             print('pmean',self.pmean)
             except:
                 drk = 0
@@ -1177,13 +1233,14 @@ class App(QFrame):
                 
               #  o2s = str(data_m["o2conc"][-1])
                 o2 = int(data_m["o2conc"][-1]) #"{.:2f}".format(o2s)
-      #          print('o2', o2)
+                #print('o2', o2)
                 o2s = "{:.1f}".format(o2)
                 if(o2 > 100):
                     self.laprd.setStyleSheet("background-color: red")
                     self.laprd.setText(str(o2s))
                 if(o2 < 100):
                     self.laprd.setStyleSheet("background-color: green")
+                    #o2s = o2s + o2s
                     self.laprd.setText(str(o2s))
                 ###
                 '''    
@@ -2569,3 +2626,4 @@ if __name__ == '__main__':
     ex = App()
     sys.exit(app.exec_())
 
+9
