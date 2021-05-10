@@ -684,18 +684,19 @@ class backendWorker(QThread):
             self.currentPressure_list.append(int(data[0])/8000)
             p = self.currentPressure_list[-1]
             death =self.currentPressure_list[:10]
-           
-            if len(death) != 1:
+            
+            if len(death) >= 4:
                 naoh = sum(death)/len(death)
-            #    print('death',death)
+                
                 naoh = round(naoh,1)
-#            print('deah',naoh)
-            if mod_val in [1,2,3,5] and len(death) != 1:
-                if(naoh <= 2.8):
+                
+            if mod_val in [1,2,3,5] and len(death) >= 4 and len(death) < 15:
+                if(naoh <= 2.9):
 #                    print('aalu out')
                     emergency = 1
                 else:
                     emergency = 0
+                print('deah',naoh)    
             pi = p
             pu = ((pi-2.7)/0.2)
             pu = (round(pu,1))
@@ -719,8 +720,9 @@ class backendWorker(QThread):
                 trigger_data = abs(trigger_data)
                 trigger = peep_val - trigger_data
                 sangi = 0
-
-                if (control == 1 and currentP < trigger):# trigger_data):
+                self.false_trigger = len(self.currentPressure_list)
+#                print('falseT',self.false_trigger)
+                if (control == 1 and currentP < trigger and self.false_trigger > 10):# trigger_data):
                     lamda_b = time.time()
                     
                     mod_val_data = 1
