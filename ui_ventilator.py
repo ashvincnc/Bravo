@@ -696,12 +696,12 @@ class backendWorker(QThread):
             self.currentPressure_list.append(int(data[0])/8000)
             p = self.currentPressure_list[-1]
             death =self.currentPressure_list[:10]
-            if len(death) != 1:
+            if len(death) >= 4:
                 naoh = sum(death)/len(death)
                 naoh = round(naoh,1)
 #            print('deah',naoh)
-            if mod_val in [1,2,3,5] and len(death) != 1:
-                if(naoh <= 2.8):
+            if mod_val in [1,2,3,5] and len(death) >= 4 and len(death) <= 15:
+                if(naoh <= 2.9):
  #                   print('aalu out')
                     emergency = 1
                 else:
