@@ -729,8 +729,8 @@ class backendWorker(QThread):
                 trigger_data = abs(trigger_data)
                 trigger = peep_val - trigger_data
                 sangi = 0
-
-                if (control == 1 and currentP < trigger):# trigger_data):
+                sekf.false_trigger = len(self.currentPressure_list)
+                if (control == 1 and currentP < trigger and self.false_trigger > 10):# trigger_data):
                     lamda_b = time.time()
                     
                     mod_val_data = 1
