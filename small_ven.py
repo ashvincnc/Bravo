@@ -174,12 +174,12 @@ class breathWorker(QThread):
         if(mod_val == 4):
             pressure_pdata = pressure_pdata*50
             self.pressureCycleValue = self.readPressureValues(pressure_pdata,oxyPercent)
-        if(mod_val == 2 or mod_val == 3)  :
+        if(mod_val in [2,3,6])  :
             pressure_pdata = pressure_pdata*30
             self.pressureCycleValue = self.readPressureValues(pressure_pdata,oxyPercent)
 ##            print('pre30',pressure_pdata)
         if(mod_val == 5):
-            pressure_pdata = 1400
+            pressure_pdata = pressure_pdata*30
             self.pressureCycleValue = self.readPressureValues(pressure_pdata,oxyPercent)
             
             
@@ -405,7 +405,7 @@ class breathWorker(QThread):
 #                    print('test: peep_var',test_ex,peep_val)
 #                    print('peep achieved:',currentPo)
                     time.sleep(1)
-#                    GPIO.output(14,GPIO.LOW)
+                    GPIO.output(14,GPIO.LOW)
                     currentPo = 0
 
                 self.breathStatus = 1
@@ -697,11 +697,12 @@ class backendWorker(QThread):
             self.currentPressure_list.append(int(data[0])/8000)
             p = self.currentPressure_list[-1]
             death =self.currentPressure_list[:10]
-            if len(death) != 1:
+            if len(death) >= 4:
                 naoh = sum(death)/len(death)
+                
                 naoh = round(naoh,1)
-#            print('deah',naoh)
-            if mod_val in [1,2,3,5] and len(death) != 1:
+                
+            if mod_val in [1,2,3,5] and len(death) >= 4 and len(death) < 15:
                 if(naoh <= 2.8):
  #                   print('aalu out')
                     emergency = 1
@@ -730,8 +731,9 @@ class backendWorker(QThread):
                 trigger_data = abs(trigger_data)
                 trigger = peep_val - trigger_data
                 sangi = 0
-
-                if (control == 1 and currentP < trigger):# trigger_data):
+                self.false_trigger = len(self.currentPressure_list)
+#                print('falseT',self.false_trigger)
+                if (control == 1 and currentP < trigger and self.false_trigger > 10):
                     lamda_b = time.time()
                     
                     mod_val_data = 1
@@ -2657,4 +2659,3 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = App()
     sys.exit(app.exec_())
-
