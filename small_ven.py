@@ -585,12 +585,12 @@ class backendWorker(QThread):
                 s += 1
             print('sensor_oxy', (data[2]))    
             if(data[2] != 0):
-                #try:
-                #print('append_oxy')
                 oxy_val.append(data[2])
-                print('oxy_v',oxy_val)
+                #print('oxy_v',oxy_val)
+                oxy_value = int(oxy_val[-1]* 0.1875)
+                if(oxy_value >> 100):
+                    oxy_value = 100
                 #except:
-                 #   n = 1
             pressurel.append(int(data[0])/8000)
             pressured.append(int(data[0])/8000)
    #         print('presss',pressurel)
@@ -670,7 +670,7 @@ class backendWorker(QThread):
             prs = "{:.1f}".format(press)
             pr = float(prs)
 
-            pressure = ((pr-2.7)/0.2)
+            pressure = ((pr-2.5)/0.2)
 
 
             pressure = (round(pressure,1))
@@ -709,7 +709,7 @@ class backendWorker(QThread):
                 else:
                     emergency = 0
             pi = p
-            pu = ((pi-2.7)/0.2)
+            pu = ((pi-2.5)/0.2)
             pu = (round(pu,1))
             currentP = pu*5
             test_ex= pu*5
@@ -1366,7 +1366,7 @@ class App(QFrame):
         self.setLayout(windowLayout)
         self.mode_set = 2
         
-        self.show()
+        self.showFullScreen()
     def readSettings(self,i):
         global mod_val
         params = ["pressure", "volume", "bpm", "peep", "fio2"]
