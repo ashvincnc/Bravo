@@ -1482,33 +1482,33 @@ class App(QFrame):
     def p_callback(self, i):
 
         if(self.p_en == True):
-            v = self.plabel.text()
+            v = self.label.text()
             value = int(v) + int(i)
             self.slider.setValue(value)
             
         if(self.b_en == True):
             
-            v = self.bpmlabel.text()
+            v = self.label.text()
             value = int(v) + int(i)
             self.slider.setValue(value)
             
         if(self.pe_en == True):
-            v = self.peeplabel.text()
+            v = self.label.text()
             value = int(v) + int(i)
             self.slider.setValue(value)
         
         if(self.ti_en == True):
-            v = self.ti.text()
+            v = self.label.text()
             value = int(v) + int(i)
             self.slider.setValue(value)
             
         if(self.f_en == True):
-            v = self.fio2label.text()
+            v = self.label.text()
             value = int(v) + int(i)
             self.slider.setValue(value)
          
         if(self.v_en == True):
-            v = self.vlabel.text()
+            v = self.label.text()
             if(i == 1):
                 value = int(v) + int(i) + 49
             if(i == -1):
