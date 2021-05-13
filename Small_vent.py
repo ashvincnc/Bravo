@@ -1484,28 +1484,28 @@ class App(QFrame):
         if(self.p_en == True):
             v = self.plabel.text()
             value = int(v) + int(i)
-            self.slp.setValue(value)
+            self.slider.setValue(value)
             
         if(self.b_en == True):
             
             v = self.bpmlabel.text()
             value = int(v) + int(i)
-            self.slbpm.setValue(value)
+            self.slider.setValue(value)
             
         if(self.pe_en == True):
             v = self.peeplabel.text()
             value = int(v) + int(i)
-            self.slpeep.setValue(value)
+            self.slider.setValue(value)
         
         if(self.ti_en == True):
             v = self.ti.text()
             value = int(v) + int(i)
-            self.slti.setValue(value)
+            self.slider.setValue(value)
             
         if(self.f_en == True):
             v = self.fio2label.text()
             value = int(v) + int(i)
-            self.slfio2.setValue(value)
+            self.slider.setValue(value)
          
         if(self.v_en == True):
             v = self.vlabel.text()
@@ -1514,27 +1514,27 @@ class App(QFrame):
             if(i == -1):
                 value = int(v) + int(i) - 49
                 
-            self.slv.setValue(value)  
+            self.slider.setValue(value)  
         #print('en_v',value)
 
     def s_callback(self):
         if(self.p_en == True):
-            self.pupdate_val.click()
+            self.update_val.click()
             
         if(self.b_en == True):
-            self.bupdate_val.click()
+            self.update_val.click()
             
         if(self.pe_en == True):
-            self.peepupdate_val.click()
+            self.update_val.click()
         
         if(self.ti_en == True):
-            self.tiupdate_val.click()
+            self.update_val.click()
             
         if(self.f_en == True):
-            self.fupdate_val.click()
+            self.update_val.click()
          
         if(self.v_en == True):
-            self.vupdate_val.click() 
+            self.update_val.click() 
 
     def encoder(self):
         
