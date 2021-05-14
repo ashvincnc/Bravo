@@ -573,15 +573,29 @@ class backendWorker(QThread):
 
         data = [0]*4
 
-            
-        for i in range(4):
-            data[i] = adc.read_adc(i, gain=GAIN)
-                
-#        print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*data))
+        try:    
+            for i in range(4):
+                data[i] = adc.read_adc(i, gain=GAIN)
+        except:
+            print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*data))
+        
         pressurel.append((data[0])/8000)    
-
-        pressurel.sort(reverse = True)
-        time.sleep(0.5)    
+        if len(pressurel) > 1:
+            demo = pressurel[-2]*4
+            if pressurel[-1] < demo:
+                data_value = pressurel[-1]
+                pressured.append(data_value)
+            else:
+                data_value = pressurel[-2]
+                pressured.append(data_value)
+                
+        if len(pressurel) == 1:
+            data_value = pressurel[0]
+            pressured.append(data_value)
+                
+        print('status',pressured)       
+#        pressurel.sort(reverse = True)
+#        time.sleep(0.5)    
         if(graph == 0):
 
             diff_pre = float(data[1]*0.1875)
@@ -595,12 +609,12 @@ class backendWorker(QThread):
 
             
             if(ini == 0):
-                    firstvalue = round(pressurel[0],2)
+                    firstvalue = round(pressured[0],2)
                     currentPressure = firstvalue
                     ini += 1
 
             else:
-                    nextvalue = round(pressurel[-1],2)
+                    nextvalue = round(pressured[-1],2)
 
                     if(nextvalue > firstvalue):
                         currentPressure = nextvalue
@@ -611,8 +625,8 @@ class backendWorker(QThread):
                     else:
                         currentPressure = firstvalue
             
-            if (currentPressure < pressurel[0]):
-                currentPressure = pressurel[0]
+            if (currentPressure < pressured[0]):
+                currentPressure = pressured[0]
             else:
                currentPressure = firstvalue
 
@@ -632,8 +646,7 @@ class backendWorker(QThread):
                                     }
             press = round(currentPressure,2)
 
-            pressure = ((press-2.79)/0.2)
-
+            pressure = ((press-2.5)/0.2)
 
             pressure = (round(pressure,1))
             test = pressure*5
@@ -677,7 +690,7 @@ class backendWorker(QThread):
                     emergency = 0
 
             pi = p
-            pu = ((pi-2.7)/0.2)
+            pu = ((pi-2.5)/0.2)
             pu = (round(pu,1))
             currentP = pu*5
             test_ex= pu*5
