@@ -73,6 +73,8 @@ p_s = []
 flag = 0
 p_value = 0
 GAIN = 1
+global slider
+slider = 0 
 
 
 class breathWorker(QThread):
@@ -880,6 +882,7 @@ class App(QFrame):
         self.beThread.stopSignal.connect(self.beThread.stop)
         self.update_parameters()
         self.graph()
+        self.value_set()
 #        self.encoder()
 
         
@@ -1303,7 +1306,6 @@ class App(QFrame):
         self.data_line.setData(self.x, self.y)  # Update the data.
     
      
-
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
@@ -1318,7 +1320,7 @@ class App(QFrame):
         self.setLayout(windowLayout)
         self.mode_set = 2
         
-        self.show()
+        self.showFullScreen()
     def readSettings(self,i):
         global mod_val
         params = ["pressure", "volume", "bpm", "peep", "fio2"]
@@ -1423,8 +1425,6 @@ class App(QFrame):
         self.label_reset()
         self.readSettings(2)
         self.Bti.setEnabled(False)
-        self.Bpressure.setEnabled(True)
-        self.lpressure.setVisible(True)
         self.lpressure.setText(str(self.settings["pressure"]["default"]))
         self.lvol.setText(str(self.settings["volume"]["default"]))
         self.lbpm.setText(str(self.settings["bpm"]["default"]))
@@ -1449,59 +1449,59 @@ class App(QFrame):
     def p_callback(self, i):
 
         if(self.p_en == True):
-            v = self.plabel.text()
+            v = self.label.text()
             value = int(v) + int(i)
-            self.slp.setValue(value)
+            self.slider.setValue(value)
             
         if(self.b_en == True):
             
-            v = self.bpmlabel.text()
+            v = self.label.text()
             value = int(v) + int(i)
-            self.slbpm.setValue(value)
+            self.slider.setValue(value)
             
         if(self.pe_en == True):
-            v = self.peeplabel.text()
+            v = self.label.text()
             value = int(v) + int(i)
-            self.slpeep.setValue(value)
+            self.slider.setValue(value)
         
         if(self.ti_en == True):
-            v = self.ti.text()
+            v = self.label.text()
             value = int(v) + int(i)
-            self.slti.setValue(value)
+            self.slider.setValue(value)
             
         if(self.f_en == True):
-            v = self.fio2label.text()
+            v = self.label.text()
             value = int(v) + int(i)
-            self.slfio2.setValue(value)
+            self.slider.setValue(value)
          
         if(self.v_en == True):
-            v = self.vlabel.text()
+            v = self.label.text()
             if(i == 1):
                 value = int(v) + int(i) + 49
             if(i == -1):
                 value = int(v) + int(i) - 49
                 
-            self.slv.setValue(value)  
+            self.slider.setValue(value)  
         #print('en_v',value)
 
     def s_callback(self):
         if(self.p_en == True):
-            self.pupdate_val.click()
+            self.update_val.click()
             
         if(self.b_en == True):
-            self.bupdate_val.click()
+            self.update_val.click()
             
         if(self.pe_en == True):
-            self.peepupdate_val.click()
+            self.update_val.click()
         
         if(self.ti_en == True):
-            self.tiupdate_val.click()
+            self.update_val.click()
             
         if(self.f_en == True):
-            self.fupdate_val.click()
+            self.update_val.click()
          
         if(self.v_en == True):
-            self.vupdate_val.click() 
+            self.update_val.click() 
 
     def encoder(self):
         
@@ -1523,40 +1523,54 @@ class App(QFrame):
     def pressure_set(self):
         global mod_val
         v = self.lpressure.text()
-        self.plabel = QLabel(v, self)
-        self.plabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.plabel.setMinimumWidth(80)
-        self.plabel.setFont(QFont('Arial', 25))
-        self.plabel.setStyleSheet("color: white;  background-color: black")
+        self.label.setText(v)
+        self.Bpressure.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bvol.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bbpm.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bfio2.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bti.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpeep.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.label.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        #self.label.setMinimumWidth(80)
+        #self.label.setFont(QFont('Arial', 25))
+        #self.label.setStyleSheet("color: white;  background-color: black")
         
-        self.slp = QSlider(Qt.Vertical, self)
-        self.slp.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        #self.slp = QSlider(Qt.Vertical, self)
+        #self.slp.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
         
 #        if(mod_val == 4):
 #            self.slp.setRange(0, 32)
 #        else:
-        self.slp.setRange(0,50)
+        self.slider.setRange(0, 50)
             
-        self.slp.setFocusPolicy(Qt.StrongFocus)
-        self.slp.setPageStep(1)
+        #self.slp.setFocusPolicy(Qt.StrongFocus)
+        #self.slp.setPageStep(1)
         v = self.lpressure.text()
         #self.lpressure.setText(str(v))
-        self.slp.setValue(int(v))
-        self.slp.valueChanged.connect(self.pupdateLabel)
-        self.slp.setTickPosition(QSlider.TicksBelow)
-        self.slp.setTickInterval(5)
+        self.slider.setValue(int(v))
+        self.slider.setVisible(True)
+        self.update_val.setVisible(True)
+        self.label.setVisible(True)
+        #self.slp.valueChanged.connect(self.pupdateLabel)
+        #self.slp.setTickPosition(QSlider.TicksBelow)
+        #self.slp.setTickInterval(5)
 
 
-        self.layout.addWidget( self.slp,2,6,4,1,alignment=Qt.AlignRight)
-        self.layout.addWidget(self.plabel,6,6)
+       # self.layout.addWidget( self.slp,2,6,4,1,alignment=Qt.AlignRight)
+        #self.layout.addWidget(self.plabel,6,6)
         
 
-        self.pupdate_val = QPushButton('P update')
-        self.pupdate_val.setFont(QFont('Verdana', 13))  
-        self.pupdate_val.setStyleSheet("background-color: orange")
-        self.layout.addWidget(self.pupdate_val,7,6)
-        self.pupdate_val.clicked.connect(self.update_setp)
+        #self.pupdate_val = QPushButton('P update')
+        #self.pupdate_val.setFont(QFont('Verdana', 13))  
+        #self.pupdate_val.setStyleSheet("background-color: orange")
+        #self.layout.addWidget(self.pupdate_val,7,6)
+        #self.pupdate_val.clicked.connect(self.update_setp)
+        self.v_en = False
         self.p_en = True
+        self.b_en = False
+        self.pe_en = False
+        self.ti_en = False
+        self.f_en = False
 
         
     def update_setp(self):
@@ -1576,9 +1590,10 @@ class App(QFrame):
         self.p_en = False
         #self.p_en = pyky040.Encoder(CLK=7, DT=8, SW=6)
         #self.en_thread.join()
-        self.slp.deleteLater()
-        self.plabel.deleteLater()
-        self.pupdate_val.deleteLater()
+        self.slp.setVisible(False)
+        #self.slp.deleteLater()
+        self.plabel.setVisible(False)
+        self.pupdate_val.setVisible(False)
     def pupdateLabel(self, value):      
         self.plabel.setText(str(value))       
         self.pressure_values = self.plabel.text()
@@ -1586,39 +1601,55 @@ class App(QFrame):
     def bpm_set(self):
         
         v = int(self.lbpm.text())
-        self.bpmlabel = QLabel(str(v), self)
-        self.bpmlabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.bpmlabel.setMinimumWidth(80)
-        self.bpmlabel.setFont(QFont('Arial', 25))
-        self.bpmlabel.setStyleSheet("color: white;  background-color: black")
+        self.label.setText(str(v))
+        self.Bbpm.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bvol.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpressure.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bfio2.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bti.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpeep.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.label.setAlignment(Qt.AlignRight | Qt.AlignRight)
+
+        #self.bpmlabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        #self.bpmlabel.setMinimumWidth(80)
+        #self.bpmlabel.setFont(QFont('Arial', 25))
+        #self.bpmlabel.setStyleSheet("color: white;  background-color: black")
         
-        self.slbpm = QSlider(Qt.Vertical, self) 
-        self.slbpm.setRange(1, 20)
-        self.slbpm.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        #self.slbpm = QSlider(Qt.Vertical, self) 
+        self.slider.setRange(1, 20)
+        #self.slbpm.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
         v = int(self.lbpm.text())
-        self.slbpm.setValue(v)
-        self.slbpm.setFocusPolicy(Qt.StrongFocus)
-        self.slbpm.setPageStep(5)
-        self.slbpm.valueChanged.connect(self.bpmupdateLabel)
-        self.slbpm.setTickPosition(QSlider.TicksBelow)
-        self.slbpm.setTickInterval(5)
+        self.slider.setValue(v)
+        #self.slbpm.setFocusPolicy(Qt.StrongFocus)
+        #self.slbpm.setPageStep(5)
+        #self.slbpm.valueChanged.connect(self.bpmupdateLabel)
+        #self.slbpm.setTickPosition(QSlider.TicksBelow)
+        #self.slbpm.setTickInterval(5)
+        self.slider.setVisible(True)
+        self.update_val.setVisible(True)
+        self.label.setVisible(True)
 
-        self.bpmlabel = QLabel(str(v), self)
-        self.bpmlabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.bpmlabel.setMinimumWidth(80)
-        self.bpmlabel.setFont(QFont('Arial', 25))
-        self.bpmlabel.setStyleSheet("color: white;  background-color: black")
+        #self.bpmlabel = QLabel(str(v), self)
+        #self.bpmlabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        #self.bpmlabel.setMinimumWidth(80)
+        #self.bpmlabel.setFont(QFont('Arial', 25))
+        #self.bpmlabel.setStyleSheet("color: white;  background-color: black")
 
-        self.layout.addWidget( self.slbpm,2,6,4,1,alignment=Qt.AlignRight)
-        self.layout.addWidget(self.bpmlabel,6,6)
+        #self.layout.addWidget( self.slbpm,2,6,4,1,alignment=Qt.AlignRight)
+        #self.layout.addWidget(self.bpmlabel,6,6)
         
 
-        self.bupdate_val = QPushButton('BPM update')
-        self.bupdate_val.setFont(QFont('Verdana', 13))  
-        self.bupdate_val.setStyleSheet("background-color: orange")
-        self.layout.addWidget(self.bupdate_val,7,6)
-        self.bupdate_val.clicked.connect(self.update_setbpm)
+        #self.bupdate_val = QPushButton('BPM update')
+        #self.bupdate_val.setFont(QFont('Verdana', 13))  
+        #self.bupdate_val.setStyleSheet("background-color: orange")
+        #self.layout.addWidget(self.bupdate_val,7,6)
+        #self.bupdate_val.clicked.connect(self.update_setbpm)
+        self.v_en = False
+        self.p_en = False
         self.b_en = True
+        self.pe_en = False
+        self.ti_en = False
+        self.f_en = False
         
     def update_setbpm(self):
         global bpm_val
@@ -1631,9 +1662,9 @@ class App(QFrame):
             bpm_val = self.bpmlabel.text()
             self.lbpm.setText(bpm_val)
         
-        self.slbpm.deleteLater()
-        self.bpmlabel.deleteLater()
-        self.bupdate_val.deleteLater()
+        self.slbpm.setVisible(False)
+        self.bpmlabel.setVisible(False)
+        self.bupdate_val.setVisible(False)
         self.b_en = False
         #self.update_parameters()
     
@@ -1646,28 +1677,38 @@ class App(QFrame):
         global peep_val
 
         v = self.lpeep.text()
-        self.peeplabel = QLabel(str(v), self)
-        self.peeplabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.peeplabel.setMinimumWidth(80)
-        self.peeplabel.setFont(QFont('Arial', 25))
-        self.peeplabel.setStyleSheet("color: white;  background-color: black")
+        self.label.setText(v)
+        self.Bpeep.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bvol.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpressure.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bfio2.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bti.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bbpm.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
 
-        self.slpeep = QSlider(Qt.Vertical, self) 
-        self.slpeep.setRange(0, 20)
-        self.slpeep.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        #self.peeplabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        #self.peeplabel.setMinimumWidth(80)
+        #self.peeplabel.setFont(QFont('Arial', 25))
+        #self.peeplabel.setStyleSheet("color: white;  background-color: black")
+
+        #self.slpeep = QSlider(Qt.Vertical, self) 
+        self.slider.setRange(0, 20)
+        #self.slpeep.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
         peep_val = int(self.lpeep.text())
-        self.slpeep.setValue(int(peep_val))
-        self.slpeep.setFocusPolicy(Qt.StrongFocus)
-        self.slpeep.setPageStep(5)
-        self.slpeep.valueChanged.connect(self.peepupdateLabel)
-        self.slpeep.setTickPosition(QSlider.TicksBelow)
-        self.slpeep.setTickInterval(5)
+        self.slider.setValue(int(peep_val))
+        self.slider.setVisible(True)
+        self.update_val.setVisible(True)
+        self.label.setVisible(True)
+        #self.slpeep.setFocusPolicy(Qt.StrongFocus)
+        #self.slpeep.setPageStep(5)
+        #self.slpeep.valueChanged.connect(self.peepupdateLabel)
+        #self.slpeep.setTickPosition(QSlider.TicksBelow)
+        #self.slpeep.setTickInterval(5)
 
 
-        a = self.peeplabel.text()
+        #a = self.peeplabel.text()
 ####        print('a',a)
-        self.layout.addWidget( self.slpeep,2,6,4,1,alignment=Qt.AlignRight)
-        self.layout.addWidget(self.peeplabel,6,6)
+        #self.layout.addWidget( self.slpeep,2,6,4,1,alignment=Qt.AlignRight)
+        #self.layout.addWidget(self.peeplabel,6,6)
         
         #self.peeplabel = QLabel('Vol update', self)
         #self.peeplabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
@@ -1676,12 +1717,17 @@ class App(QFrame):
        # self.peeplabel.setStyleSheet("color: white;  background-color: black")
        # self.layout.addWidget(self.peeplabel,7,6)
 
-        self.peepupdate_val = QPushButton('peep update')
-        self.peepupdate_val.setFont(QFont('Verdana', 13))  
-        self.peepupdate_val.setStyleSheet("background-color: orange")
-        self.layout.addWidget(self.peepupdate_val,7,6)
-        self.peepupdate_val.clicked.connect(self.update_setpeep)
+        #self.peepupdate_val = QPushButton('peep update')
+        #self.peepupdate_val.setFont(QFont('Verdana', 13))  
+        #self.peepupdate_val.setStyleSheet("background-color: orange")
+        #self.layout.addWidget(self.peepupdate_val,7,6)
+        #self.peepupdate_val.clicked.connect(self.update_setpeep)
+        self.v_en = False
+        self.p_en = False
+        self.b_en = False
         self.pe_en = True
+        self.ti_en = False
+        self.f_en = False
         
     def update_setpeep(self):
         global peep_val
@@ -1694,9 +1740,9 @@ class App(QFrame):
             self.lpeep.setText(peep_val)
             peep_val = int(self.lpeep.text())
         #print('ui_peep',peep_val)
-        self.slpeep.deleteLater()
-        self.peeplabel.deleteLater()
-        self.peepupdate_val.deleteLater()
+        self.slpeep.setVisible(False)
+        self.peeplabel.setVisible(False)
+        self.peepupdate_val.setVisible(False)
         self.pe_en = False
         #self.update_parameters()
     
@@ -1707,32 +1753,48 @@ class App(QFrame):
         
     def ti_set(self):
 
-        self.slti = QSlider(Qt.Vertical, self) 
-        self.slti.setRange(0, 100)
-        self.slti.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
-        self.slti.setFocusPolicy(Qt.StrongFocus)
+        #self.slti = QSlider(Qt.Vertical, self) 
+        self.slider.setRange(0, 100)
+        self.Bti.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bvol.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpressure.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bfio2.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bbpm.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpeep.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+
+        #self.slti.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        #self.slti.setFocusPolicy(Qt.StrongFocus)
         v = self.ti.text()
-        self.slti.setValue(int(v))
-        self.slti.setPageStep(5)
-        self.slti.valueChanged.connect(self.tiupdateLabel)
-        self.slti.setTickPosition(QSlider.TicksBelow)
-        self.slti.setTickInterval(5)
+        self.slider.setValue(int(v))
+        self.label.setText(str(v))
+        #self.slti.setPageStep(5)
+        #self.slti.valueChanged.connect(self.tiupdateLabel)
+        #self.slti.setTickPosition(QSlider.TicksBelow)
+        #self.slti.setTickInterval(5)
+        self.slider.setVisible(True)
+        self.update_val.setVisible(True)
+        self.label.setVisible(True)
 
-        self.tilabel = QLabel(v, self)
-        self.tilabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.tilabel.setMinimumWidth(80)
-        self.tilabel.setFont(QFont('Arial', 25))
-        self.tilabel.setStyleSheet("color: white;  background-color: black")
+        #self.tilabel = QLabel(v, self)
+        #self.tilabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        #self.tilabel.setMinimumWidth(80)
+        #self.tilabel.setFont(QFont('Arial', 25))
+        #self.tilabel.setStyleSheet("color: white;  background-color: black")
 
-        self.layout.addWidget( self.slti,2,6,4,1,alignment=Qt.AlignRight)
-        self.layout.addWidget(self.tilabel,6,6)
+        #self.layout.addWidget( self.slti,2,6,4,1,alignment=Qt.AlignRight)
+        #self.layout.addWidget(self.tilabel,6,6)
 
-        self.tiupdate_val = QPushButton('ti update')
-        self.tiupdate_val.setFont(QFont('Verdana', 10))  
-        self.tiupdate_val.setStyleSheet("background-color: orange")
-        self.layout.addWidget(self.tiupdate_val,7,6)
-        self.tiupdate_val.clicked.connect(self.update_setti)
+        #self.tiupdate_val = QPushButton('ti update')
+        #self.tiupdate_val.setFont(QFont('Verdana', 10))  
+        #self.tiupdate_val.setStyleSheet("background-color: orange")
+        #self.layout.addWidget(self.tiupdate_val,7,6)
+        #self.tiupdate_val.clicked.connect(self.update_setti)
+        self.v_en = False
+        self.p_en = False
+        self.b_en = False
+        self.pe_en = False
         self.ti_en = True
+        self.f_en = False
         
     def update_setti(self):
         global ti_val
@@ -1742,9 +1804,9 @@ class App(QFrame):
             v = self.tilabel.text()
             self.lfio2.setText(v)
         ti_val = self.ti.text()
-        self.slti.deleteLater()
-        self.tilabel.deleteLater()
-        self.tiupdate_val.deleteLater()
+        self.slti.setVisible(False)
+        self.tilabel.setVisible(False)
+        self.tiupdate_val.setVisible(False)
         self.ti_en = False
         #self.update_parameters()
     
@@ -1757,31 +1819,46 @@ class App(QFrame):
     def fio2_set(self):
         global fio_val
 
-        self.slfio2 = QSlider(Qt.Vertical, self) 
-        self.slfio2.setRange(0, 100)
-        self.slfio2.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
-        self.slfio2.setFocusPolicy(Qt.StrongFocus)
-        fio_val = self.lfio2.text()
-        self.slfio2.setValue(int(fio_val))
-        self.slfio2.setPageStep(5)
-        self.slfio2.valueChanged.connect(self.fio2updateLabel)
-        self.slfio2.setTickPosition(QSlider.TicksBelow)
-        self.slfio2.setTickInterval(5)
+        #self.slfio2 = QSlider(Qt.Vertical, self) 
+        self.slider.setRange(0, 100)
+        self.Bfio2.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bvol.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpressure.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bti.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bbpm.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpeep.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.slfio2.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        #self.slfio2.setFocusPolicy(Qt.StrongFocus)
+        v = self.lfio2.text()
+        self.slider.setValue(int(v))
+        self.label.setText(str(v))
+        self.slider.setVisible(True)
+        self.update_val.setVisible(True)
+        self.label.setVisible(True)
+        #self.slfio2.setPageStep(5)
+        #self.slfio2.valueChanged.connect(self.fio2updateLabel)
+        #self.slfio2.setTickPosition(QSlider.TicksBelow)
+        #self.slfio2.setTickInterval(5)
 
-        self.fio2label = QLabel(str(fio_val), self)
-        self.fio2label.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.fio2label.setMinimumWidth(80)
-        self.fio2label.setFont(QFont('Arial', 25))
-        self.fio2label.setStyleSheet("color: white;  background-color: black")
+        #self.fio2label = QLabel(str(fio_val), self)
+        #self.fio2label.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        #self.fio2label.setMinimumWidth(80)
+        #self.fio2label.setFont(QFont('Arial', 25))
+        #self.fio2label.setStyleSheet("color: white;  background-color: black")
 
-        self.layout.addWidget( self.slfio2,2,6,4,1,alignment=Qt.AlignRight)
-        self.layout.addWidget(self.fio2label,6,6)
+        #self.layout.addWidget( self.slfio2,2,6,4,1,alignment=Qt.AlignRight)
+        #self.layout.addWidget(self.fio2label,6,6)
 
-        self.fupdate_val = QPushButton('fio2 update')
-        self.fupdate_val.setFont(QFont('Verdana', 10))  
-        self.fupdate_val.setStyleSheet("background-color: orange")
-        self.layout.addWidget(self.fupdate_val,7,6)
-        self.fupdate_val.clicked.connect(self.update_setfio2)
+        #self.fupdate_val = QPushButton('fio2 update')
+        #self.fupdate_val.setFont(QFont('Verdana', 10))  
+        #self.fupdate_val.setStyleSheet("background-color: orange")
+        #self.layout.addWidget(self.fupdate_val,7,6)
+        #self.fupdate_val.clicked.connect(self.update_setfio2)
+        self.v_en = False
+        self.p_en = False
+        self.b_en = False
+        self.pe_en = False
+        self.ti_en = False
         self.f_en = True
         
     def update_setfio2(self):
@@ -1794,9 +1871,9 @@ class App(QFrame):
             v = self.fio2label.text()
             self.lfio2.setText(v)
         fio_val = int(self.lfio2.text())
-        self.slfio2.deleteLater()
-        self.fio2label.deleteLater()
-        self.fupdate_val.deleteLater()
+        self.slfio2.setVisible(False)
+        self.fio2label.setVisible(False)
+        self.fupdate_val.setVisible(False)
         self.f_en = False
         #self.update_parameters()
     
@@ -1806,95 +1883,178 @@ class App(QFrame):
         self.fio2_v = str(value)     
         
     def value_set(self):
-       
-        self.sl = QSlider(Qt.Vertical, self) 
-        self.sl.setRange(0, 100)
-        self.sl.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
-        self.sl.setFocusPolicy(Qt.NoFocus)
-        self.sl.setPageStep(5)
-        self.sl.valueChanged.connect(self.updateLabel)
-        self.sl.setTickPosition(QSlider.TicksBelow)
-        self.sl.setTickInterval(5)
+        global slider
+        
+        if(slider == 0):
+            self.slider = QSlider(Qt.Vertical, self) 
+            self.slider.setRange(0, 100)
+            self.slider.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+            self.slider.setFocusPolicy(Qt.NoFocus)
+            self.slider.setPageStep(5)
+            self.slider.valueChanged.connect(self.updateLabel)
+            self.slider.setTickPosition(QSlider.TicksBelow)
+            self.slider.setTickInterval(5)
+            
 
-        self.label = QLabel('0', self)
-        self.label.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.label.setMinimumWidth(80)
-        self.label.setFont(QFont('Arial', 25))
-        self.label.setStyleSheet("color: white;  background-color: black")
+            self.label = QLabel('0', self)
+            self.label.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            self.label.setMinimumWidth(80)
+            self.label.setFont(QFont('Arial', 25))
+            self.label.setStyleSheet("color: white;  background-color: black")
 
-        self.layout.addWidget( self.sl,2,6,4,1,alignment=Qt.AlignRight)
-        self.layout.addWidget(self.label,6,6)
+            self.layout.addWidget( self.slider,2,6,4,1,alignment=Qt.AlignRight)
+            self.layout.addWidget(self.label,6,6)
+            self.slider.setVisible(False)
+            self.label.setVisible(False)
 
-        self.update_val = QPushButton('Update')
-        self.update_val.setFont(QFont('Arial', 20))  
-        self.update_val.setStyleSheet("background-color: red")
-        self.layout.addWidget(self.update_val,7,6)
-        self.update_val.clicked.connect(self.update_set)    
+            self.update_val = QPushButton('Update')
+            self.update_val.setFont(QFont('Arial', 20))
+            self.update_val.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+            #self.update_val.setStyleSheet("background-color: red")
+            self.layout.addWidget(self.update_val,7,6)
+            self.update_val.clicked.connect(self.update_set)
+            self.update_val.setVisible(False)
+            slider += 1
+        
+    def updateLabel(self, value):      
+        self.label.setText(str(value))
+        self.updated_value = str(value)
+    
+    def update_set(self):
+        global pressure_val,volume_val,bpm_val,fio_val,ti_val,peep_val,fio_val
+        
+        if(self.p_en == True):
+            try:
+                self.lpressure.setText(self.updated_value)
+                pressure_val = int(self.lpressure.text())
+                self.p_en = False
+                self.slider.setVisible(False)
+                self.label.setVisible(False)
+                self.update_val.setVisible(False)
+                self.Bpressure.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+                #            print('p update',pressure_val)
+            except:
+                v = self.label.text()
+                self.lpressure.setText(v)
+                
+        if(self.v_en == True):
+            try:
+                self.lvol.setText(self.updated_value)
+                volume_val = int(self.lvol.text())
+                self.v_en = False
+                self.slider.setVisible(False)
+                self.label.setVisible(False)
+                self.update_val.setVisible(False)
+                self.Bvol.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+                #            print('p update',pressure_val)
+            except:
+                volume_val = self.label.text()
+                self.lvol.setText(volume_val)
+        
+        if(self.b_en == True):
+            try:
+                self.lbpm.setText(self.updated_value)
+                bpm_val = int(self.lbpm.text())
+                self.Bbpm.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+                self.b_en = False
+                self.slider.setVisible(False)
+                self.label.setVisible(False)
+                self.update_val.setVisible(False)
+                #            print('p update',pressure_val)
+            except:
+                bpm_val = self.label.text()
+                self.lbpm.setText(bpm_val)
+                
+        if(self.ti_en == True):
+            try:
+                self.ti.setText(self.updated_value)
+                ti_val = int(self.ti_val.text())
+                self.Bti.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+                self.ti_en = False
+                self.slider.setVisible(False)
+                self.label.setVisible(False)
+                self.update_val.setVisible(False)
+                #            print('p update',pressure_val)
+            except:
+                ti_val = self.label.text()
+                self.ti.setText(ti_val)
+                
+        if(self.pe_en == True):
+            try:
+                self.lpeep.setText(self.updated_value)
+                self.Bpeep.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+                peep_val = int(self.lpeep.text())
+                self.pe_en = False
+                self.slider.setVisible(False)
+                self.label.setVisible(False)
+                self.update_val.setVisible(False)
+                #            print('p update',pressure_val)
+            except:
+                peep_val = self.label.text()
+                self.lbpm.setText(peep_val)
+        
+        if(self.f_en == True):
+            try:
+                self.lfio2.setText(self.updated_value)
+                self.Bfio2.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+                fio_val = int(self.lfio2.text())
+                self.f_en = False
+                self.slider.setVisible(False)
+                self.label.setVisible(False)
+                self.update_val.setVisible(False)
+                #            print('p update',pressure_val)
+            except:
+                fio_val = self.label.text()
+                self.lfio2.setText(fio_val)
+
+
     
     def volume_set(self):
        
-        self.slv = QSlider(Qt.Vertical, self)
-        self.slv.setRange(50, 1500)
-        self.slv.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
-        self.slv.setFocusPolicy(Qt.NoFocus)
+        #self.slv = QSlider(Qt.Vertical, self)
+        self.slider.setRange(50, 1500)
+        self.Bvol.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bti.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpressure.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bfio2.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bbpm.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.Bpeep.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+
+        #self.slv.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
+        #self.slv.setFocusPolicy(Qt.NoFocus)
         v = self.lvol.text()
-        self.slv.setValue(int(v))
-        self.slv.setPageStep(5)
-        self.slv.setGeometry(QtCore.QRect(390,300,360,36))
-        self.slv.valueChanged.connect(self.volume_update)
-        self.slv.setTickPosition(QSlider.TicksBelow)
-        self.slv.setTickInterval(5)
-
-        self.vlabel = QLabel(v, self)
-        self.vlabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
-        self.vlabel.setMinimumWidth(80)
-        self.vlabel.setFont(QFont('Arial', 25))
-        self.vlabel.setStyleSheet("color: white;  background-color: black")
-
-        self.layout.addWidget( self.slv,2,6,4,1,alignment=Qt.AlignRight)
-        self.layout.addWidget(self.vlabel,6,6)
-
-        self.vupdate_val = QPushButton('Vol update')
-        self.vupdate_val.setFont(QFont('Arial', 13))  
-        self.vupdate_val.setStyleSheet("background-color: red")
-        self.layout.addWidget(self.vupdate_val,7,6)
-        self.vupdate_val.clicked.connect(self.lvolume_set)
-        self.v_en = True
+        self.slider.setValue(int(v))
         
-    def update_set(self):
-        global pressure_val,volume_val,fio_val,peep_val
- #       print('pink',self.updated_value) #Updated value
-        if (self.pressure_value == True):
-            self.lpressure.setText(self.updated_value)
-            pressure_val = int(self.lpressure.text())
-            self.pressure_value = False
-        if (self.volume_value == True):
-            self.lvol.setText(self.updated_value)
-            volume_val = int(self.lvol.text())
-            self.volume_value = False
-        if(self.bpm_value == True):
-            self.lbpm.setText(self.updated_value)
-            self.bpm_value = False
-        if(self.fio2_value == True):
-            self.lfio2.setText(self.updated_value)
-            fio_val = self.lfio2.text()
-            self.fio2_value = False
-        if(self.peep_value == True):
-            self.lpeep.setText(self.updated_value)
-            a = self.lpeep.text()
-    #        print('')
-            peep_val = int(self.lpeep.text())
-            self.peep_value == False
-        print('update_vol',volume_val)
-        print('update_pre',pressure_val)
-        print('update_fio2',fio2_value)
-        print('update_peep',peep_val)
-        self.sl.deleteLater()
-        self.label.deleteLater()
-        self.update_val.deleteLater()
-        self.update_parameters()
-        self.v_en = False
-    
+        self.slider.setVisible(True)
+        self.update_val.setVisible(True)
+        self.label.setVisible(True)
+        #self.slv.setPageStep(5)
+        #self.slv.setGeometry(QtCore.QRect(390,300,360,36))
+        #self.slv.valueChanged.connect(self.volume_update)
+        #self.slv.setTickPosition(QSlider.TicksBelow)
+        #self.slv.setTickInterval(5)
+
+        #self.vlabel = QLabel(v, self)
+        #self.vlabel.setAlignment(Qt.AlignRight | Qt.AlignRight)
+        #self.vlabel.setMinimumWidth(80)
+        #self.vlabel.setFont(QFont('Arial', 25))
+        #self.vlabel.setStyleSheet("color: white;  background-color: black")
+
+        #self.layout.addWidget( self.slv,2,6,4,1,alignment=Qt.AlignRight)
+        #self.layout.addWidget(self.vlabel,6,6)
+
+        #self.vupdate_val = QPushButton('Vol update')
+        #self.vupdate_val.setFont(QFont('Arial', 13))  
+        #self.vupdate_val.setStyleSheet("background-color: red")
+        #self.layout.addWidget(self.vupdate_val,7,6)
+        #self.vupdate_val.clicked.connect(self.lvolume_set)
+        self.v_en = True
+        self.p_en = False
+        self.b_en = False
+        self.pe_en = False
+        self.ti_en = False
+        self.f_en = False
+        
         
     def volume_update(self, value):
         self.vlabel.setText(str(value))
@@ -1906,16 +2066,15 @@ class App(QFrame):
         try:
             self.lvol.setText(self.vol_v)
             volume_val = int(self.lvol.text())
-            self.slv.deleteLater()
             print('update vol',volume_val)
         except:
             v = self.vlabel.text()
             self.lvol.setText(v)
             volume_val = int(self.lvol.text())
-#        print('volume')
-        self.slv.deleteLater()
-        self.vlabel.deleteLater()
-        self.vupdate_val.deleteLater()
+    
+        self.slv.setVisible(False)
+        self.vlabel.setVisible(False)
+        self.vupdate_val.setVisible(False)
         self.update_parameters()
         self.v_en = False
     
@@ -1933,10 +2092,6 @@ class App(QFrame):
 
     def volume_updates(self):
         self.volume_value = True      
-        
-    def updateLabel(self, value):      
-        self.label.setText(str(value))
-        self.updated_value = str(value)
 
         
     def ie_update(self):
@@ -1971,8 +2126,8 @@ class App(QFrame):
             es = (25*pressure_val)/100
         if(value == 'None'):
             es = 8
-#        print('es_set',value)
-#        print('es',es)
+        
+    
     def ie_updated(self, value):
         #self.cb.deleteLater()
         global ie_value
@@ -2197,8 +2352,8 @@ class App(QFrame):
     def off_process(self):
         global emergency
   #      print("pressed stop button")
-#        self.item = ''
-#        self.md.setCurrentText(self.item)
+ #       self.item = 'None'
+ #       self.md.setCurrentText(self.item)
         self.alarm.setVisible(False)
         self.alarm.setText('-')
         self.alarm.setStyleSheet("color: white;  background-color: black")
@@ -2222,13 +2377,11 @@ class App(QFrame):
         self.layout.setColumnStretch(6, 9)     
 
         #Adding push buttons
-        self.Bpressure = QPushButton(self)
-        self.Bpressure.setText('pressure')#pressurepush button
+        self.Bpressure = QPushButton('Pressure') #pressurepush button
         self.Bpressure.setGeometry(0, 0, 100, 40)
         self.Bpressure.setFont(QFont('Arial', 20))  
         self.Bpressure.setStyleSheet("background-color: white")
         self.Bpressure.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.Bpressure.setEnabled(False)
         self.layout.addWidget(self.Bpressure,8,0)
         
         self.Rgraph = QPushButton('Refresh Graph') #GraphRefreshbutton
@@ -2368,9 +2521,9 @@ class App(QFrame):
         Bmode.setGeometry(0, 0, 100, 400)
         Bmode.setFont(QFont('Arial', 20))
         Bmode.setStyleSheet("background-color: white")
-   #     self.layout.addWidget(Bmode,3,4)
+        #self.layout.addWidget(Bmode,3,4)
         self.mode_update()
-     #   Bmode.clicked.connect(self.mode_update)
+        #Bmode.clicked.connect(self.mode_update)
 
         Btrigger = QPushButton('Trigger')  #trigger button
         Btrigger.setGeometry(0, 0, 100, 40)
@@ -2398,7 +2551,7 @@ class App(QFrame):
         self.lie.setStyleSheet("color: white;  background-color: black")
         self.layout.addWidget(self.lie,6,4)
 
-        self.lmode = QLabel("-")  #mode label
+        self.lmode = QLabel("Modes")  #mode label
         self.lmode.setFont(QFont('Arial', 25))
         self.lmode.setStyleSheet("color: white;  background-color: black")
         self.layout.addWidget(self.lmode,2,4)
@@ -2506,7 +2659,7 @@ class App(QFrame):
         #Bstart.setStyleSheet("border-colour: black")
         #Bstart.setStyleSheet("padding: 4px")
         self.Bstart.clicked.connect(self.on_process)
-        self.layout.addWidget(self.Bstart,1,6)
+        self.layout.addWidget(self. Bstart,1,6)
         self.Bstart.clicked.connect(self.stop)
         
         self.lalarm = QLabel('Alarm')
