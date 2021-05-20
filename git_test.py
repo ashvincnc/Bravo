@@ -46,6 +46,7 @@ global adc
 adc = Adafruit_ADS1x15.ADS1115(address=0x48)
 global pressure_support
 global pressure_val,volume_val,fio_val,peep_val
+peep_val = 4
 global in_time,out_time
 global graph,ps_change
 global mod_val,mod_val_data,value
@@ -53,9 +54,10 @@ global emergency
 emergency = 0
 value = 0
 mod_val_data = 0
-mod_val = 1
+mod_val = 2
 ps_change = 0
 global data_m,control,ti_value
+control = 0
 global trigger_data,ps_control
 trigger_data = -3
 global currentPo,Slide
@@ -153,15 +155,7 @@ class breathWorker(QThread):
         volume_pdata = int(volume_val)
 #        print('v_data',volume_val)
         fio2_data = int(fio_val)   
-#        print('f_data',fio2_data)
-        
-  #      print('pressure_pdata',pressure_pdata)
 
-        
-        
-        #self._key_lock.acquire()
-        #self.o2DC = pressure_pdata
-        #self.pDC = fio2_data
         pressPercent = 0
         oxyPercent = 0
         if(fio2_data)>21 and fio2_data > 50:
@@ -183,8 +177,9 @@ class breathWorker(QThread):
             pressure_pdata = pressure_pdata*50
             self.pressureCycleValue = self.readPressureValues(pressure_pdata,oxyPercent)
         if(mod_val in [2,3])  :
-#            pressure_pdata = pressure_pdata*30
-            self.pressureCycleValue = self.readvolumeValues(pressure_pdata,oxyPercent)
+            pressure_pdata = pressure_pdata*30
+            self.pressureCycleValue = self.readPressureValues(pressure_pdata,oxyPercent)
+#            self.pressureCycleValue = self.readvolumeValues(pressure_pdata,oxyPercent)
 ##            print('pre30',pressure_pdata)
         if(mod_val == 5):
             pressure_pdata = pressure_pdata*30
@@ -317,7 +312,7 @@ class breathWorker(QThread):
                     
                                         
            
-        if (mod_val == 1 ):
+        if mod_val in [1,2]:
             print('mode 1/2 enabled')
             while self.running:
                 
@@ -327,18 +322,7 @@ class breathWorker(QThread):
           #      print('mode 1')
                 self.pwm_out()
 
-                    
-
-                    
-        if ( mod_val == 2):
-            while self.running:
-                
-                self.pwm_in()
-                time.sleep(0.1)
-                self.pwm_out()
-
-
-                    
+           
 
         if (mod_val == 5):
             print('mode 5 enabled')
@@ -410,7 +394,7 @@ class breathWorker(QThread):
                 self.o2PWM.ChangeDutyCycle(self.peep)
                 self.pPWM.ChangeDutyCycle(self.peep)
           #      print('peep',self.peep)
-                GPIO.output(26,GPIO.HIGH)
+                
 #                peep_var = peep_val+2
       #          print('test: peep:',test,peep_val)
                 
@@ -424,6 +408,7 @@ class breathWorker(QThread):
 
                 self.breathStatus = 1
                 GPIO.output(14,GPIO.HIGH)
+                GPIO.output(26,GPIO.HIGH)
                 self._exhale_event.wait(timeout=self.out_t)
                 self.p_out_end_time = time.time()
                 exhale_time = self.p_out_end_time - self.p_out_start_time
@@ -601,12 +586,12 @@ class backendWorker(QThread):
                 f = 1
         #time.sleep(0.4)
 #        except:
-        print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*data))
+#        print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*data))
 #            sen_data = 0
         
         if(sen_data ==1):    
             p_data = (data[0]/8000) #*0.1875)/1503
-            
+            print("voltage",p_data)
             p_data = round(p_data,1)
             p_list.append(p_data)
  #           print('sensor_data_list',p_list)
@@ -614,8 +599,8 @@ class backendWorker(QThread):
         if(graph == 0) and (sen_data == 1):   
             p_data = round(p_data,1)
 #            print('sensor_data',p_list)
-            print('len',len(p_s))
-            print('p_s',p_s)
+#            print('len',len(p_s))
+#            print('p_s',p_s)
             p_s.append(p_data)
             present_value = p_s[-1]
             if(present_value<3 and present_value>2.5):
@@ -650,7 +635,8 @@ class backendWorker(QThread):
 #            print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*data))
 
 #            print(data[0]/8000)
-            diff_pre = float(data[1]*0.1875)
+#            diff_pre = float(data[1]/8000)
+#            print("diffP+in",diff_pre)
 
             try:
                 self.dataDict["Dpress+"].clear()
@@ -704,6 +690,7 @@ class backendWorker(QThread):
             pressure = (round(pressure,1))
             test = pressure*5
             test_in = pressure*5
+#            print("pip value",test)
             ###
             '''
             if mod_val==2 and volume_val < test_in:
@@ -718,35 +705,40 @@ class backendWorker(QThread):
                     emergency = 3
 
                 if(pressure_va < test_in):
-                    test_in = ressure_va
-                    self.dataDict["Dpress+"].append(test_in) #check its wrong
+                    test_in = pressure_va
+                    self.dataDict["Dpress+"].append(test_in) 
 
                 else:
-                    self.dataDict["Dpress+"].append(pressure*5) #check its wrong
+                    self.dataDict["Dpress+"].append(pressure*5) 
                     
              
             else:
+                if emergency != 0:
+                    self.dataDict["Dpress+"].append(pressure)
+                    
+                else:    
                     self.dataDict["Dpress+"].append(test_in)
 
         if (graph == 1):
             
             
-            diff_pre = float(data[1]*0.1875)/8000
-
+#            diff_pre = float(data[1]/8000)
+#            print("diffP",diff_pre)
             self.currentPressure_list.append((data[0])/8000)
- #           print((data[0])/8000)
+#            print("data",(data[0])/8000)
             p = self.currentPressure_list[-1]
-            death =self.currentPressure_list[:10]
+            death =self.currentPressure_list[1:10]
 
             
-            if len(death) >= 4:
+            if len(death) >= 3:
                 naoh = sum(death)/len(death)
                 
                 naoh = round(naoh,1)
+#                print("death",death)
                 
-            if mod_val in [1,2,3,5] and len(death) >= 4 and len(death) < 15:
+            if mod_val in [1,2,3,5] and len(death) >= 3 and len(death) < 6:
                 if(naoh <= 2.6):
-
+ #                   print("naoh",naoh)
                     emergency = 1
                 else:
                     emergency = 0
@@ -995,7 +987,10 @@ class App(QFrame):
             
         
         if self.bthThread.breathStatus == 0:
-            global data_m
+            global data_m,peep_val
+            
+#            tata = max(data_m['Dpress+'])
+ #           print('venai',tata)
             #print('datarec', data_m)
             #self.data_get()
             try:
@@ -1036,84 +1031,52 @@ class App(QFrame):
                 else:
                     self.lbvedata.setText(str(volc))
                     self.lmvd.setText(str(vv))
-                   # print('no change')
-                    
-         #   peep = int(self.lpeep.text()) + randint(0,10)
+
             self.lbpeepdata.setText('-')
 
             try:
-                
-                self.pip = max(data_m['Dpress+'])
-                pressure = data_m['Dpress+'][-1]
- #               print(pressure)
-                self.lpresd.setText(str(pressure))
-                
-#                if mod_val in [2,3,4]:
-                    
-                
-                
-#                    print('in  2')
-#                   if(pressure > pressure_val):
-#                       self.lpresd.setText(str(pressure_val))
-                   #     print('prd',pressure_val)
-     #            #       print('prrrd',pressure)
-#                    else:
-#                     self.lpresd.setText(str(pressure))
-                 #       print('press',pressure)
-                    
-                if(mod_val == 1 or mod_val ==5):
-                    self.lpresd.setText(str(pressure))
-                
-                
-                
-                
-          #      self.mean.append(self.pip)
-          #      self.pmean = self.mean[-4:]
-           #     print('pmean',self.pmean)
-           #     print('len',len(self.pmean))
-           ###
-                '''
-                if (len(self.pmean)%4) == 0:
-                    self.mean = self.pmean[-4:]
-                    self.mean_v = sum(self.mean)/4
-             #       print('mean',self.mean_v)
-                    if(i_rr < 3):
-                        print('i-rr',i_rr)
-                        self.lbpmeandata.setText(str(self.mean_v))
-                        '''
-           ###
 
-                
+                if(mod_val ==5):
+                    self.lpresd.setText(str(pressure))
+
                 if(mod_val == 2 or mod_val == 4 or mod_val == 3):
           #         self.pip = pressure_val
-                    a = max(data_m['Dpress+'])
-                    
- #                   print('a',a)
-                    self.pip = a 
+
+#                    print("EMEr",emergency)
+                    if emergency != 0:
+                        a = data_m['Dpress+'][0]
+                        a = a/5
+ #                       print("min_Val")
+
+                    else:                        
+                        a = max(data_m['Dpress+'])
+
+
+                    self.pip = int(a)
                     if(mod_val == 2 or mod_val == 3):
-                        self.lbpdata.setText(str(self.pip))
+                        if self.pip > peep_val:
+                            self.lbpdata.setText(str(self.pip))
+  #                          print("peep",peep_val)
+  #                          print("pip",self.pip)
                     if mod_val in [4]:
-                        self.lbpdata.setText(str(self.pip))
-                        self.mean = float((self.pip * ti) + (float(self.peep) * ex_time))
-                        self.pmean = self.mean/(ti+ex_time)
-                        self.pmean = "{:.1f}".format(self.pmean)
-                        self.lbpmeandata.setText(str(self.pmean))
-                        time = int(ex_time-ti)
-                #        print('time',time)
-                        rr_value = 60 /(time)
-                        rr_value = round(rr_value,1)
-              #          print('rr',rr_value)
-                        self.lrrd.setText(str(rr_value))
-                #        print('pip',self.pip)
-               #         print('peep',self.peep)
-               #         print('ti',ti)
-                     #   print('exti',ex_time)
+                        if(self.pip > peep_val):
+                            self.lbpdata.setText(str(self.pip))
+                            self.mean = float((self.pip * ti) + (float(self.peep) * ex_time))
+                            self.pmean = self.mean/(ti+ex_time)
+                            self.pmean = "{:.1f}".format(self.pmean)
+                            self.lbpmeandata.setText(str(self.pmean))
+                            time = int(ex_time-ti)
+                            rr_value = 60 /(time)
+                            rr_value = round(rr_value,1)
+                            self.lrrd.setText(str(rr_value))
+
                     if(mod_val == 5):
                         self.lbpmeandata.setText('-')
                         
                         
                 else:
-                    self.lbpdata.setText(str(self.pip))
+                    if(self.pip > peep_val):
+                        self.lbpdata.setText(str(peep_val))
                 
 
                     
@@ -1146,14 +1109,14 @@ class App(QFrame):
       #      print('exhale',self.exhaleTime)
             
             try:
-                self.peep_d = (data_m['Dpress+'][-1])
-     #           print('peep',self.peep_d)
-#                if( self.peep_d < 2.7):
-                self.peep = round(self.peep_d,1)
-
+ #               print("len",len(data_m['Dpress+'])
+                if (len(data_m['Dpress+']) > 2):
+                    self.peep_d = (data_m['Dpress+'][-1])
+                    self.peep = int(self.peep_d)# round(self.peep_d,1)
+#                    print("peep",self.peep)
         #        print('pmeen',pmeen)
           #      peep = (self.lpeep.setText(str(pmeen)))
-                self.lbpeepdata.setText(str(self.peep))
+                    self.lbpeepdata.setText(str(self.peep))
                 self.lrrd.setText(str(rr_value))
                 self.mean = float((self.pip * self.inhaleTime) + (float(self.peep) * self.exhaleTime))
       #          print('mean',self.mean)
@@ -1231,10 +1194,10 @@ class App(QFrame):
                 self.y = self.y[1:]
                 #v = int(data_m['Dpress+'][-1])
                 y_data = int(data_m['Dpress+'][-1])
-                if(y_data>0):
-                    pre_v = y_data
-                if(y_data <= 0):
-                    y_data = pre_v
+                #if(y_data>0):
+                 #   pre_v = y_data
+                #if(y_data <= 0):
+                 #   y_data = pre_v
                 self.y.append(y_data)
                 self.data_line.setData(self.y)
                 ##for i in range(6):
@@ -1320,9 +1283,10 @@ class App(QFrame):
         self.setLayout(windowLayout)
         self.mode_set = 2
         
-        self.showFullScreen()
+        self.show()
     def readSettings(self,i):
         global mod_val
+        
         params = ["pressure", "volume", "bpm", "peep", "fio2"]
         # reading the data from the file
         
@@ -1360,7 +1324,11 @@ class App(QFrame):
             except KeyError as e:
                 print('KeyError - missing key ["%s"]["%s"]' % (param, str(e)) )
              
-    
+    def closeEvent(self,event):
+        
+        replymsg = QMessageBox.question(self,"exit","click yes to off",QMessageBox.Yes|QMessageBox.No)
+        
+        
     def label_reset(self):
         self.lpressure.setText('0')
         self.lvol.setText('0')
@@ -2233,7 +2201,7 @@ class App(QFrame):
         if self.mode_set == 2:
           #  self.lmode.setText('VC')
             
-            mod_val = 1
+            mod_val = 2
             self.bes.hide()
 #            self.Bstart.setEnabled(True)
             self.BEs.setVisible(False)
@@ -2253,7 +2221,7 @@ class App(QFrame):
             print('mode_val',mod_val)
         if self.mode_set == 3:
            # self.lmode.setText('PC')
-            mod_val = 2
+            mod_val = 3
  #           self.Bstart.setEnabled(True)
             self.Bpressure.setText('Ps')
             self.BEs.setVisible(False)
