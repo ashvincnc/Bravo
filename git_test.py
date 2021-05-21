@@ -77,7 +77,8 @@ p_value = 0
 GAIN = 1
 global slider
 slider = 0 
-
+global e
+es = 5
 
 class breathWorker(QThread):
     
@@ -154,7 +155,9 @@ class breathWorker(QThread):
 #        print('p_data',pressure_pdata)
         volume_pdata = int(volume_val)
 #        print('v_data',volume_val)
-        fio2_data = int(fio_val)   
+        fio2_data = int(fio_val)
+        fio2_data = 100
+        #print('fio2_data',fio2_data)
 
         pressPercent = 0
         oxyPercent = 0
@@ -232,9 +235,6 @@ class breathWorker(QThread):
         if (mod_val == 4):
              
              print('in mode4')
- #            plan = 0
- #            graph = 1
- #            control = 1
 
              while self.running:
                  end = time.time()+15
@@ -249,14 +249,14 @@ class breathWorker(QThread):
 
                             control = 0
                             one = time.time()
-
+                            print("ps_in")
                             while(test <= pressure_val):
                                 self.pwm_ps_in()
       
                             two = time.time()-one
                             
-                            time.sleep(1)
-                            print('sleep')
+#                            time.sleep(1)
+#                            print('sleep')
 
 
                             graph = 1
@@ -304,7 +304,7 @@ class breathWorker(QThread):
                 time.sleep(0.1)
                 self.pwm_out()
                 if (lavs == 1 and mod_val_data == 1):
-                    print('in round 2')
+                    print('inhale start 1')
                     mod_val = 4
                     mod_val_data = 1
                     lavs = 0
@@ -350,6 +350,8 @@ class breathWorker(QThread):
                 
                 self.pPWM.ChangeDutyCycle(self.pressureCycleValue[0])
                 self.o2PWM.ChangeDutyCycle(self.pressureCycleValue[1])
+                print('pressure_cycle:',self.pressureCycleValue[0])
+                print('oxygen_cycle:',self.pressureCycleValue[1])
                 
                 GPIO.output(26,GPIO.LOW)
                 GPIO.output(14,GPIO.LOW)
@@ -412,7 +414,7 @@ class breathWorker(QThread):
                 self._exhale_event.wait(timeout=self.out_t)
                 self.p_out_end_time = time.time()
                 exhale_time = self.p_out_end_time - self.p_out_start_time
-                print('Exhale_time',exhale_time)
+           #     print('Exhale_time',exhale_time)
                 self.end_time = time.time()
            #     print('end_time',self.end_time)
                 if(mod_val == 1 or mod_val == 2 or mod_val ==3):
@@ -421,13 +423,14 @@ class breathWorker(QThread):
 
     def pwm_ps_out(self):
                 global graph,peep_val,ti
-                global rr_value           
+                global rr_value
+                self.peep = int(peep_val)
                 graph = 1
                 self.start_time = time.time()
                 self.o2PWM.ChangeDutyCycle(1)
                 self.pPWM.ChangeDutyCycle(1)
                 GPIO.output(14,GPIO.HIGH)
-                GPIO.output(26,GPIO.LOW)
+                GPIO.output(26,GPIO.HIGH)
                 self.breathStatus = 1
  #               self.o2PWM.start(0)
 #                self.pPWM.start(0)
@@ -439,7 +442,7 @@ class breathWorker(QThread):
                 self.pPWM.ChangeDutyCycle(self.pressureCycleValue[0])
                 self.o2PWM.ChangeDutyCycle(self.pressureCycleValue[1])
                 
-                GPIO.output(26,GPIO.HIGH)
+                GPIO.output(26,GPIO.LOW)
                 GPIO.output(14,GPIO.LOW)
                 self.breathStatus = 0
                 i_rr += 1
@@ -560,9 +563,10 @@ class backendWorker(QThread):
         global graph,mod_val_data,currentP,currentPo
         global ps_change,kz,value,peep_val,test_ex
         global emergency,p_s,flag,p_value,p_list,p_cal
-        global fio_val
+        global fio_val,prev_data
          
         ko = 0
+        #prev_data = 0
         
         
 
@@ -577,7 +581,7 @@ class backendWorker(QThread):
 
 #        try:
         
-        for i in range(3):
+        for i in range(4):
             try:
                 data[i] = adc.read_adc(i, gain=GAIN)
                 time.sleep(0.1)
@@ -586,15 +590,34 @@ class backendWorker(QThread):
                 f = 1
         #time.sleep(0.4)
 #        except:
-#        print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*data))
+                print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*data))
 #            sen_data = 0
         
         if(sen_data ==1):    
             p_data = (data[0]/8000) #*0.1875)/1503
-            print("voltage",p_data)
-            p_data = round(p_data,1)
+            oxy_data = data[2]*0.1875
+            oxy = int(oxy_data)
+            self.dataDict["o2conc"].append(oxy)
+            #print('oxy_volt',oxy_data)
+#            print("voltage",p_data)
+            if(ini == 0):
+                #ini += 1
+                if(p_data < 2.0):
+                    p_data = 2.5
+                    prev_data = p_data
+#                    print('prev_data assigned in the start')
+                if(p_data > 2.0):
+                    p_data = round(p_data,1)
+                    prev_data = p_data    
+            if(p_data > 2.0):
+                p_data = round(p_data,1)
+                prev_data = p_data
+            if(p_data < 2.0):
+                p_data = prev_data
+#                print('prev_data assigned:',prev_data)
             p_list.append(p_data)
- #           print('sensor_data_list',p_list)
+#            print('press_volt',p_data)
+#            print('sensor_data_list',p_list)
         #if(mod_val in [2]):    
         if(graph == 0) and (sen_data == 1):   
             p_data = round(p_data,1)
@@ -625,7 +648,7 @@ class backendWorker(QThread):
                     n = 0
             p_cal.append(p_value)
  #       print('calulated_sensor_value',p_cal)
-        pressurel.append(p_value)       
+        pressurel.append(p_data)       
 #        print('8888',pressurel)  
         #else:
             #pressurel.append(p_data)
@@ -641,6 +664,7 @@ class backendWorker(QThread):
             try:
                 self.dataDict["Dpress+"].clear()
                 self.currentPressure_list.clear()
+                self.seam.clear()
 
             except:
                 drk = 1
@@ -726,7 +750,10 @@ class backendWorker(QThread):
 #            print("diffP",diff_pre)
             self.currentPressure_list.append((data[0])/8000)
 #            print("data",(data[0])/8000)
-            p = self.currentPressure_list[-1]
+
+            p = abs(self.currentPressure_list[-1])
+
+#            print("exhake_p",p)    
             death =self.currentPressure_list[1:10]
 
             
@@ -754,7 +781,8 @@ class backendWorker(QThread):
 
                 
             if(mod_val == 4 or mod_val == 3):
-               
+                ###
+                '''
                 if(mod_val == 4):
                     time.sleep(0.5)
                 else:
@@ -762,18 +790,20 @@ class backendWorker(QThread):
                 if(sangi == 1):
                     print('waiting for exhalation')
                     time.sleep(1.5)
-
+                '''
+                ###
                 trigger_data = abs(trigger_data)
                 trigger = peep_val - trigger_data
                 sangi = 0
                 self.false_trigger = len(self.currentPressure_list)
 
-                if (control == 1 and currentP < trigger and self.false_trigger > 10):# trigger_data):
-                    lamda_b = time.time()
-                    
-                    mod_val_data = 1
-                    lavs = 1
-                    print('set_pre,act_pre: ',trigger,currentP)
+                if (control == 1 and currentP < 0):#trigger):
+                    if self.false_trigger > 4 :# trigger_data):
+                        lamda_b = time.time()
+                        
+                        mod_val_data = 1
+                        lavs = 1
+                        print('set_pre,act_pre: ',trigger,currentP)
 
             
             if(len(self.dataDict["Dpress+"])>300):
@@ -809,12 +839,16 @@ class backendWorker(QThread):
                 testu = test#peep_va
    
             self.seam.append(testu)
-            self.s = self.seam[-1]
+            if len(self.seam)>4:
+                self.s = self.seam[-1]
+            else:
+                self.s = abs(self.seam[-1])
+#            print("self,ss",self.seam)
           
             if (self.s < peep_var):
                 currentPo = 1
 
-
+#            print("exhale",self.s)
             self.dataDict["Dpress+"].append(self.s)
             ini = 0
 
@@ -875,6 +909,7 @@ class App(QFrame):
         self.update_parameters()
         self.graph()
         self.value_set()
+        self.fio2_set()
 #        self.encoder()
 
         
@@ -1788,21 +1823,23 @@ class App(QFrame):
         global fio_val
 
         #self.slfio2 = QSlider(Qt.Vertical, self) 
-        self.slider.setRange(0, 100)
-        self.Bfio2.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.Bvol.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.Bpressure.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.Bti.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.Bbpm.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
-        self.Bpeep.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.slider.setRange(0, 100)
+        #self.Bfio2.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.Bvol.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.Bpressure.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.Bti.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.Bbpm.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.Bpeep.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
         #self.slfio2.setStyleSheet("QSlider{min-width: 100px; max-width: 100px;} QSlider::groove:vertical{border: 1px solid #262626; width: 30px; background: grey; margin: 0 12px;} QSlider::handle:vertical {background: white; border: 2px #55F4A5; width: 40px; height: 50px; line-height: 20px;margin-top: -4px; margin-bottom: -4px; border-radius: 9px;}") 
         #self.slfio2.setFocusPolicy(Qt.StrongFocus)
-        v = self.lfio2.text()
-        self.slider.setValue(int(v))
-        self.label.setText(str(v))
-        self.slider.setVisible(True)
-        self.update_val.setVisible(True)
-        self.label.setVisible(True)
+        #v = self.lfio2.text()
+        self.slider.setValue(100)
+        self.lfio2.setText(str(100))
+        fio_val = int(self.lfio2.text())
+        #self.label.setText(str(v))
+        #self.slider.setVisible(True)
+        #self.update_val.setVisible(True)
+        #self.label.setVisible(True)
         #self.slfio2.setPageStep(5)
         #self.slfio2.valueChanged.connect(self.fio2updateLabel)
         #self.slfio2.setTickPosition(QSlider.TicksBelow)
@@ -2197,6 +2234,7 @@ class App(QFrame):
             self.Bfio2.setEnabled(False)
             self.lfio2.setVisible(False)
             self.Bpressure.setText('Pressure')
+            self.fio2_set()
             print('mode_val',mod_val)
         if self.mode_set == 2:
           #  self.lmode.setText('VC')
@@ -2218,6 +2256,7 @@ class App(QFrame):
             self.lfio2.setVisible(True)
             self.Bpressure.setText('Pressure')
             self.vc()
+            self.fio2_set()
             print('mode_val',mod_val)
         if self.mode_set == 3:
            # self.lmode.setText('PC')
@@ -2234,6 +2273,7 @@ class App(QFrame):
             self.lpeep.setVisible(True)
             self.Bfio2.setEnabled(True)
             self.lfio2.setVisible(True)
+            self.fio2_set()
             print('mode_val',mod_val)
             self.pc()
         if self.mode_set == 4:
@@ -2258,6 +2298,7 @@ class App(QFrame):
             self.lmvd.setText('-')
             self.lbvedata.setText('0')
             self.lbvedata.setText('0')
+            self.fio2_set()
             print('mode_val',mod_val)
         if self.mode_set == 5:
             self.hfonc()
@@ -2277,6 +2318,7 @@ class App(QFrame):
             self.lpeep.setVisible(False)
             self.Bfio2.setEnabled(True)
             self.lfio2.setVisible(True)
+            self.fio2_set()
             print('mode_val',mod_val)
             
         if self.mode_set == 6:
@@ -2300,6 +2342,7 @@ class App(QFrame):
             self.lbvedata.setText('0')
             self.lbvedata.setText('0')
             self.Bpressure.setText('PS')
+            self.fio2_set()
             print('mode_val',mod_val)
     def on_process(self):
    #     print("pressed start button")
