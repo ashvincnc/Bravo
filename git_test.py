@@ -51,7 +51,8 @@ peep_val = 4
 global in_time,out_time
 global graph,ps_change
 global mod_val,mod_val_data,value
-global emergency
+global emergency,es
+es = 7
 emergency = 0
 value = 0
 mod_val_data = 0
@@ -88,29 +89,39 @@ global comp_on
 
 def start_up():
     global comp_on
-    
+    #GPIO.setmode(GPIO.BCM)
+    #GPIO.setmode(GPIO.BCM)
     GPIO.setup(12, GPIO.OUT)
     GPIO.setup(13, GPIO.OUT)
-    o2PWM = GPIO.PWM(12, 50)
-    pPWM = GPIO.PWM(13, 50)
-    GPIO.setup(14, GPIO.OUT)
-    GPIO.setup(19, GPIO.OUT)
-    GPIO.setup(26, GPIO.OUT)
-    GPIO.output(14,GPIO.HIGH)
-    pPWM.ChangeDutyCycle(90)
-    o2PWM.ChangeDutyCycle(90)
-    time.sleep(10)
+    time.sleep(1)
+    o2PWM = GPIO.PWM(12, 100)
+    pPWM = GPIO.PWM(13, 100)
+    o2PWM.start(0)
+    pPWM.start(0)
+    #GPIO.setup(14, GPIO.OUT)
+    #GPIO.setup(19, GPIO.OUT)
+    #GPIO.setup(26, GPIO.OUT)
+    #GPIO.output(14,GPIO.HIGH)
+    time.sleep(0.1)
+    #while True:
+    for i in range(0,91,5):
+        #print(i)
+        pPWM.ChangeDutyCycle(i)
+        o2PWM.ChangeDutyCycle(i)
+        time.sleep(0.05)
     data = adc.read_adc(0, gain=1)
     data = data/8000
     data = round(data,1)
     print('adc_val',data)
-    if(data > 2.5):
+    if(data > 2.8):
         comp_on = True
     else:
         comp_on = False      
     #o2PWM.close()
     #pPWM.close()
     print('Comp',comp_on)
+    o2PWM.stop()
+    pPWM.stop()
     
 start_up()    
 
@@ -195,12 +206,12 @@ class breathWorker(QThread):
             volume_pdata = pressure_pdata*30
 #        print('v_data',volume_val)
         fio2_data = int(fio_val)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+#        print("volume_pdata",volume_pdata)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
         pressPercent = 0
         oxyPercent = 0
         if(fio2_data)>21 and fio2_data > 50:
             oxy_value = float(fio2_data)/100
-            pressPercent = float(volume_pdata) * (1-oxy_value)
+            pressPercent = float(volume_pdata) #* (1-oxy_value)
             oxyPercent = float(volume_pdata) * oxy_value
         elif(fio2_data)>21 and fio2_data < 51:
             oxy_value = float(fio2_data)/100
@@ -248,6 +259,7 @@ class breathWorker(QThread):
         global graph,mod_val_data,control,value,ti_value,ti,two,lamda_b,test
         global ti_val,pressure_support,ps_control,es,sangi,currentP,currentPo
         global mod_val,plan,ps_change,ex_time,lavs,peep_val,test_ex,fio_val
+        global ps_end
         GPIO.output(14,GPIO.LOW)
         self.o2PWM.start(0)
         self.pPWM.start(0)
@@ -291,11 +303,11 @@ class breathWorker(QThread):
 
                             graph = 1
                             print('is it')
-                            
+                            ps_start = time.time()
                             while(test >= es):
                                 self.pwm_ps_no()
                             #    drk = 1
-
+                            ps_end = time.time() - ps_start
                             print('pwm_ps_no')
                             if(test < es or test < 8):
                                 
@@ -593,7 +605,7 @@ class backendWorker(QThread):
         global graph,mod_val_data,currentP,currentPo
         global ps_change,kz,value,peep_val,test_ex
         global emergency,p_s,flag,p_value,p_list,p_cal
-        global fio_val,prev_data
+        global fio_val,prev_data,ps_end,es,mod_val
          
         ko = 0
         #prev_data = 0
@@ -629,7 +641,7 @@ class backendWorker(QThread):
             oxy = int(oxy_data)
             self.dataDict["o2conc"].append(oxy)
             #print('oxy_volt',oxy_data)
-#            print("voltage",p_data)
+            print("voltage",p_data)
             if(ini == 0):
                 #ini += 1
                 if(p_data < 2.0):
@@ -780,34 +792,34 @@ class backendWorker(QThread):
 #            diff_pre = float(data[1]/8000)
 #            print("diffP",diff_pre)
             self.currentPressure_list.append((data[0])/8000)
-#            print("data",(data[0])/8000)
+            print("data",(data[0])/8000)
 
             p = abs(self.currentPressure_list[-1])
 
 #            print("exhake_p",p)    
-            death =self.currentPressure_list[1:10]
-
-            
-            if len(death) >= 3:
+            death =self.currentPressure_list[1:5]
+            print("death",death)
+       
+            if len(death) >= 2:
                 naoh = sum(death)/len(death)
                 
                 naoh = round(naoh,1)
 #                print("death",death)
                 
-            if mod_val in [1,2,3,5] and len(death) >= 3 and len(death) < 6:
-                if(naoh <= 2.6):
+            if mod_val in [1,2,3,5] and len(death) >= 2 and len(death) < 4:
+                if(naoh <= 2.5):
  #                   print("naoh",naoh)
                     emergency = 1
                 else:
                     emergency = 0
                     
 
-            pi = p
+            pi = round(p,1)
             pu = ((pi-2.5)/0.2)
             pu = (round(pu,1))
             currentP = pu*5
             test_ex= pu*5
-
+#           print("test_ex",test_ex)
                  
             peep_var = peep_val+2
 
@@ -855,13 +867,39 @@ class backendWorker(QThread):
                     }
             
             
+            
+            
             if (Slide == 1):
                 
                 for i in np.arange(slide_p,slide_peep,-0.5):
                     roundi = round(i,1)
                     self.dataDict["Dpress+"].append(roundi)
                     Slide = 0
-                    
+            
+            ###
+            '''
+
+
+            if Slide == 1:
+                  if es < 4:
+                      es = 4
+        #         ps_end = round(ps_end,1)
+        #         baW_ps = time.time()+ps_end
+        #         while(time.time()>baW_ps):
+                  print("entry_no")
+                  while(test_ex > es):
+                     print("test_ex:es:",test_ex,es)
+                     round_i = slide_p - 0.5
+                     if round_i == es:
+                         break
+                     self.dataDict["Dpress+"].append(round_i)
+                     slide_p = round_i
+#                     print("ps_curve",slide_p)
+                     time.sleep(1)
+                  Slide = 0
+            
+            '''
+            ###
             test = pu*5
 
             if test > peep_val:
@@ -938,6 +976,7 @@ class App(QFrame):
         self.beThread = backendWorker('hello')
 
         self.beThread.stopSignal.connect(self.beThread.stop)
+        self.comp_warning()
         self.update_parameters()
         self.graph()
         self.value_set()
@@ -945,7 +984,20 @@ class App(QFrame):
 #        self.encoder()
 
         
+    def comp_warning(self):
+        global comp_on
         
+        if comp_on == False:
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Warning)
+            msgBox.setText("Connect the compressor and click Ok")
+            msgBox.setWindowTitle("No Compressor!!")
+            msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        #msgBox.buttonClicked.connect(msgButtonClick)
+
+            returnValue = msgBox.exec()
+            if returnValue == QMessageBox.Ok:
+                  print('OK clicked')
         
 
         
@@ -1030,7 +1082,7 @@ class App(QFrame):
         self.timer_a.start()
         self.layout.addWidget(self.graphwidget,2,0,5,4)
         #self.data_line.clear()
-        
+    
     def alarm_data(self):
         global emergency,Hp,Hv,HP_catch
         a = 0
@@ -1038,8 +1090,11 @@ class App(QFrame):
 
 
             if emergency == 1:
-                self.alarm.setText('dis-connect')
+                self.alarm.setFont(QFont('Arial', 13))
+                self.alarm.setText('Circuit Disconnect') 
                 self.alarm.setStyleSheet("color: white;  background-color: red")
+#                time.sleep(0.5)
+#                self.alarm.setText('disconnect')
             if emergency == 3:
                 self.lpresd.setText('High-Pr')
                 if HP_catch == 1:
@@ -1066,7 +1121,7 @@ class App(QFrame):
             if HP_catch == 1 and emergency == 0:
                 Hp = 0
             
-        emergency = 0
+        #emergency = 0
         
     def alarm_stop(self):
         global emergency,Hp,Hv
@@ -1368,7 +1423,7 @@ class App(QFrame):
         self.createGridLayout()
         self.bes.hide()
         self.BEs.setVisible(False)
-        
+        self.Bpressure.setEnabled(False)
         windowLayout = QVBoxLayout()
         windowLayout.addWidget(self.horizontalGroupBox)
 
@@ -2369,6 +2424,8 @@ class App(QFrame):
 #            self.Bstart.setEnabled(True)
             self.bes.hide()
             self.BEs.setVisible(False)
+            self.Bpressure.setVisible(True)
+            self.Bpressure.setEnabled(True)
             self.Bpressure.setText('Flow')
 
             self.Bti.setEnabled(False)
