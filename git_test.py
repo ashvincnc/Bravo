@@ -27,10 +27,12 @@ global rap,data_line
 rap = 0
 GPIO.setmode(GPIO.BCM)
 import Adafruit_ADS1x15
-#from pyky040 import pyky040
+from pyky040 import pyky040
 import sys
 
 global gf,ti,sangi
+global check
+check = 0
 ti = 0
 sangi = 0
 global plan,lavs,ie_value
@@ -223,7 +225,7 @@ class breathWorker(QThread):
            
 #        print("Percents: ", pressPercent,oxyPercent)
         
-        self.pressureCycleValue = self.readPressureValues(pressPercent,oxyPercent)
+        self.pressureCycleValue = self.readPressureValues(pressPercent,pressPercent)#oxyPercent)
 
             
 #        print("pressureCycleValue")
@@ -259,7 +261,7 @@ class breathWorker(QThread):
         global graph,mod_val_data,control,value,ti_value,ti,two,lamda_b,test
         global ti_val,pressure_support,ps_control,es,sangi,currentP,currentPo
         global mod_val,plan,ps_change,ex_time,lavs,peep_val,test_ex,fio_val
-        global ps_end
+        global ps_end,check
         GPIO.output(14,GPIO.LOW)
         self.o2PWM.start(0)
         self.pPWM.start(0)
@@ -336,6 +338,7 @@ class breathWorker(QThread):
                  if(plan ==0 and mod_val_data == 0):
                       print('mode changed to 1')
                       mod_val = 3
+                      check = 1
                       break
         
         if ( mod_val == 3):
@@ -345,7 +348,7 @@ class breathWorker(QThread):
                 self.pwm_in()
                 time.sleep(0.1)
                 self.pwm_out()
-                if (lavs == 1 and mod_val_data == 1):
+                if (lavs == 1 and mod_val_data == 1 and check == 1):
                     print('inhale start 1')
                     mod_val = 4
                     mod_val_data = 1
@@ -376,13 +379,15 @@ class breathWorker(QThread):
                     self.pwm_out()
                     break
         
-               
+    #    self.pwm_out()       
    
 
     def pwm_in(self):
 
 
                 global graph,i_rr,ti,HP_catch
+                global control
+                control = 0
                 HP_catch = 1
                 print("self.running.loop")
                 print('')
@@ -417,6 +422,9 @@ class breathWorker(QThread):
                 
                 global graph,peep_val,ti,currentPo
                 global rr_value,test,test_ex
+                global mod_val_data,mod_val
+                global control,trigger_value
+                control = 1
                 self.peep = int(peep_val)
                 
            #     print('peep',peep_val)
@@ -434,7 +442,9 @@ class breathWorker(QThread):
                 if peep_val in [10,11,12]:
                     self.peep = 30
                 '''
-                ###
+                ### 
+                
+                
                 self.o2PWM.ChangeDutyCycle(self.peep)
                 self.pPWM.ChangeDutyCycle(self.peep)
           #      print('peep',self.peep)
@@ -453,10 +463,22 @@ class breathWorker(QThread):
                 self.breathStatus = 1
                 GPIO.output(14,GPIO.HIGH)
                 GPIO.output(26,GPIO.HIGH)
-                self._exhale_event.wait(timeout=self.out_t)
+                
+                
+                
+                if mod_val in [2,3]:
+                    if lavs == 1 and mod_val_data == 1:
+                        print("trigger done in modes")
+                        self._exhale_event.wait(0)
+                        
+                        mod_val_data  = 0
+                    else:
+                    
+ #                       print("trigger not done ")
+                         self._exhale_event.wait(timeout=self.out_t)
                 self.p_out_end_time = time.time()
                 exhale_time = self.p_out_end_time - self.p_out_start_time
-           #     print('Exhale_time',exhale_time)
+                print('Exhale_time',exhale_time)
                 self.end_time = time.time()
            #     print('end_time',self.end_time)
                 if(mod_val == 1 or mod_val == 2 or mod_val ==3):
@@ -641,7 +663,7 @@ class backendWorker(QThread):
             oxy = int(oxy_data)
             self.dataDict["o2conc"].append(oxy)
             #print('oxy_volt',oxy_data)
-            print("voltage",p_data)
+ #           print("voltage",p_data)
             if(ini == 0):
                 #ini += 1
                 if(p_data < 2.0):
@@ -792,13 +814,13 @@ class backendWorker(QThread):
 #            diff_pre = float(data[1]/8000)
 #            print("diffP",diff_pre)
             self.currentPressure_list.append((data[0])/8000)
-            print("data",(data[0])/8000)
+#            print("data",(data[0])/8000)
 
             p = abs(self.currentPressure_list[-1])
 
 #            print("exhake_p",p)    
             death =self.currentPressure_list[1:5]
-            print("death",death)
+#            print("death",death)
        
             if len(death) >= 2:
                 naoh = sum(death)/len(death)
@@ -819,12 +841,12 @@ class backendWorker(QThread):
             pu = (round(pu,1))
             currentP = pu*5
             test_ex= pu*5
-#           print("test_ex",test_ex)
+            print("test_ex",test_ex)
                  
             peep_var = peep_val+2
 
                 
-            if(mod_val == 4 or mod_val == 3):
+            if(mod_val in [2,3,4,6]):
                 ###
                 '''
                 if(mod_val == 4):
@@ -836,18 +858,20 @@ class backendWorker(QThread):
                     time.sleep(1.5)
                 '''
                 ###
-                trigger_data = abs(trigger_data)
-                trigger = peep_val - trigger_data
+#                trigger_data = abs(trigger_data)
+#                trigger = peep_val - trigger_data
+#                trigger_data = trigger_data
+#                print("trigger_data : cp",trigger_data,currentP)
                 sangi = 0
                 self.false_trigger = len(self.currentPressure_list)
 
-                if (control == 1 and currentP < 0):#trigger):
+                if (control == 1 and currentP < trigger_data):
                     if self.false_trigger > 4 :# trigger_data):
                         lamda_b = time.time()
                         
                         mod_val_data = 1
                         lavs = 1
-                        print('set_pre,act_pre: ',trigger,currentP)
+                        print('set_pre,act_pre: ',trigger_data,currentP)
 
             
             if(len(self.dataDict["Dpress+"])>300):
@@ -981,7 +1005,7 @@ class App(QFrame):
         self.graph()
         self.value_set()
        # self.fio2_set()
-#        self.encoder()
+        self.encoder()
 
         
     def comp_warning(self):
@@ -1199,6 +1223,7 @@ class App(QFrame):
 
 
                     self.pip = int(a)
+                    self.lpresd.setText(str(self.pip))
                     if(mod_val == 2 or mod_val == 3):
                         if self.pip > peep_val:
                             self.lbpdata.setText(str(self.pip))
@@ -1238,7 +1263,7 @@ class App(QFrame):
             self.bthThread.update_pwm_Data()
             self.lbcadata.setText('Exhale')
             #print('datarec', data_m)
-            self.lpresd.setText('0')
+            
             self.lbtidata.setText('-')
             self.lbpdata.setText('-')
             #self.lpbdata.setText(press)
@@ -1259,6 +1284,7 @@ class App(QFrame):
                 if (len(data_m['Dpress+']) > 2):
                     self.peep_d = (data_m['Dpress+'][-1])
                     self.peep = int(self.peep_d)# round(self.peep_d,1)
+                    self.lpresd.setText(str(self.peep))
 #                    print("peep",self.peep)
         #        print('pmeen',pmeen)
           #      peep = (self.lpeep.setText(str(pmeen)))
@@ -2477,6 +2503,8 @@ class App(QFrame):
         self.beThread.start()
         self.bthThread.start()
         self.on = 1
+        self.timer.start()
+        self.timer_a.start()
 
         
     def off_process(self):
@@ -2492,8 +2520,11 @@ class App(QFrame):
 #        self.lbvedata.setText('0')
      #   print('done')
         self.on = 0
+        self.timer.stop()
+        self.timer_a.stop()
         self.beThread.stopSignal.emit()
         self.bthThread.stopSignal.emit()
+        
 #        GPIO.output(14,GPIO.HIGH)
 #        GPIO.output(26,GPIO.LOW)
         
@@ -2900,3 +2931,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = App()
     sys.exit(app.exec_())
+
