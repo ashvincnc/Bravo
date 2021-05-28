@@ -1,33 +1,21 @@
 {
   "VolumeValues": [
-    {"VolumeValue": {"min": 0,"max": 5,"value": 30}},
-    {"VolumeValue": {"min": 6,"max": 10,"value": 35}},
-    {"VolumeValue": {"min": 11,"max": 15,"value": 40}},
-    {"VolumeValue": {"min": 16,"max": 20,"value": 50}},
-    {"VolumeValue": {"min": 21,"max": 25,"value": 60}},
-    {"VolumeValue": {"min": 26,"max": 28,"value": 70}},
-    {"VolumeValue": {"min": 29,"max": 33,"value": 80}},
-    {"VolumeValue": {"min": 34,"max": 50,"value": 100}}
+    {"VolumeValue": {"min": 0,"max": 20,"value": 30}},
+    {"VolumeValue": {"min": 21,"max": 25,"value": 40}},
+    {"VolumeValue": {"min": 26,"max": 30,"value": 50}},
+    {"VolumeValue": {"min": 31,"max": 35,"value": 60}},
+    {"VolumeValue": {"min": 36,"max": 38,"value": 80}},
+    {"VolumeValue": {"min": 39,"max": 50,"value": 90}}
+
   ],
   "OxygenValues": [
-    {"OxygenValue": {"min": 0,"max": 100,"value": 38}},
-    {"OxygenValue": {"min": 101,"max": 150,"value": 47}},
-    {"OxygenValue": {"min": 151,"max": 200,"value": 49}},
-    {"OxygenValue": {"min": 201,"max": 250,"value": 51}},
-    {"OxygenValue": {"min": 251,"max": 300,"value": 53}},
-    {"OxygenValue": {"min": 301,"max": 350,"value": 55}},
-    {"OxygenValue": {"min": 351,"max": 400,"value": 57}},
-    {"OxygenValue": {"min": 401,"max": 450,"value": 59}},
-    {"OxygenValue": {"min": 451,"max": 500,"value": 61}},
-    {"OxygenValue": {"min": 501,"max": 550,"value": 61}},
-    {"OxygenValue": {"min": 551,"max": 600,"value": 63}},
-    {"OxygenValue": {"min": 601,"max": 700,"value": 65}},
-    {"OxygenValue": {"min": 701,"max": 800,"value": 66}},
-    {"OxygenValue": {"min": 801,"max": 900,"value": 67}},
-    {"OxygenValue": {"min": 901,"max": 1000,"value": 68}},
-    {"OxygenValue": {"min": 1001,"max": 1100,"value": 69}},
-    {"OxygenValue": {"min": 1101,"max": 1200,"value": 70}},
-    {"OxygenValue": {"min": 1200,"max": 1500,"value": 71}}
+    {"OxygenValue": {"min": 0,"max": 20,"value": 30}},
+    {"OxygenValue": {"min": 21,"max": 25,"value": 40}},
+    {"OxygenValue": {"min": 26,"max": 30,"value": 50}},
+    {"OxygenValue": {"min": 31,"max": 35,"value": 60}},
+    {"OxygenValue": {"min": 36,"max": 38,"value": 80}},
+    {"OxygenValue": {"min": 39,"max": 50,"value": 90}}
+ 
   ]
-
 }
+
