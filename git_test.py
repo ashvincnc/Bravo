@@ -15,6 +15,7 @@ import time
 import numpy as np
 from PyQt5.QtCore import QThread
 global pressure_pdata
+
 global fio2_pdata
 global lpressure
 import threading
@@ -53,6 +54,7 @@ peep_val = 4
 
 global in_time,out_time
 global graph,ps_change
+graph =0
 global mod_val,mod_val_data,value
 global emergency,es
 es = 7
@@ -203,13 +205,13 @@ class breathWorker(QThread):
 #        print('p_data',pressure_pdata)
         if mod_val == 2:
             volume_pdata = int(volume_val)
-        elif mod_val == 5:
+        if mod_val == 5:
             volume_pdata = pressure_pdata*15
         else:
             volume_pdata = pressure_pdata*30
 #        print('v_data',volume_val)
         fio2_data = int(fio_val)
-#        print("volume_pdata",volume_pdata)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
         pressPercent = 0
         oxyPercent = 0
         if(fio2_data)>21 and fio2_data > 50:
@@ -223,10 +225,19 @@ class breathWorker(QThread):
         else:
             pressPercent = volume_pdata
             oxyPercent = 0
-           
+#        print("volume_pdata",pressPercent)   
 #        print("Percents: ", pressPercent,oxyPercent)
-        
-        self.pressureCycleValue = self.readPressureValues(pressPercent,pressPercent)#oxyPercent)
+    #    if mod_val == 2:
+    #        self.pressureCycleValue = self.readPressureValues(pressPercent,pressPercent)#oxyPercent)
+        if(mod_val in [2,5]):
+            self.pressureCycleValue = self.readPressureValues(pressPercent,pressPercent)
+        if(mod_val in [4,6]):
+#            pressure_pdata = pressure_pdata*50
+            self.pressureCycleValue = self.readvolumeValues(pressure_pdata,pressure_pdata)
+        if(mod_val in [3])  :
+
+            self.pressureCycleValue = self.readvolumeValues(pressure_pdata,pressure_pdata)
+##            print('pre30',pressure_pdata)
 
             
 #        print("pressureCycleValue")
@@ -262,7 +273,7 @@ class breathWorker(QThread):
         global graph,mod_val_data,control,value,ti_value,ti,two,lamda_b,test
         global ti_val,pressure_support,ps_control,es,sangi,currentP,currentPo
         global mod_val,plan,ps_change,ex_time,lavs,peep_val,test_ex,fio_val
-        global ps_end,check
+        global ps_end,check,pressure
         GPIO.output(14,GPIO.LOW)
         self.o2PWM.start(0)
         self.pPWM.start(0)
@@ -285,26 +296,21 @@ class breathWorker(QThread):
                  while(time.time()<end):
               #       drk_lav = time.time()
                      if (mod_val_data == 1):
-                             
 
                             graph = 0
 
                             control = 0
                             one = time.time()
-                            print("ps_in")
-                            while(test <= pressure_val):
+                            print("ps_in",pressure)
+                            while(pressure <= pressure_val):
                                 self.pwm_ps_in()
       
                             two = time.time()-one
-                            
-#                            time.sleep(1)
-#                            print('sleep')
-
 
                             graph = 1
-                            print('is it')
+                            print('is it',pressure)
                             ps_start = time.time()
-                            while(test >= es):
+                            while(pressure >= es):
                                 self.pwm_ps_no()
                             #    drk = 1
                             ps_end = time.time() - ps_start
@@ -413,14 +419,14 @@ class breathWorker(QThread):
                 if(mod_val == 1 or mod_val == 2 or mod_val == 3):
                     ti = ((self.end) - (self.start_time))
                     ti = round(ti,1)
-                self.pPWM.ChangeDutyCycle(self.pressureCycleValue[0]/2)
-                self.o2PWM.ChangeDutyCycle(self.pressureCycleValue[1]/2)    
+#                self.pPWM.ChangeDutyCycle(self.pressureCycleValue[0]/2)
+#                self.o2PWM.ChangeDutyCycle(self.pressureCycleValue[1]/2)    
    #             print('ti',ti)    
     def pwm_out(self):
                 
                 global graph,peep_val,ti,currentPo
                 global rr_value,test,test_ex,fio_val
-                global mod_val_data,mod_val
+                global mod_val_data,mod_val,clear_set
                 global control,trigger_value
                 print("")
     #            print("exhaltio//startsv")
@@ -479,6 +485,7 @@ class breathWorker(QThread):
                 self.p_out_end_time = time.time()
                 exhale_time = self.p_out_end_time - self.p_out_start_time
  #               print('Exhale_time',exhale_time)
+                clear_set = 1
                 self.end_time = time.time()
            #     print('end_time',self.end_time)
                 try:
@@ -492,6 +499,7 @@ class breathWorker(QThread):
                         print("comp_on")
                 except:
                     drk = 1
+                    
                     
     def pwm_ps_out(self):
                 global graph,peep_val,ti
@@ -563,7 +571,12 @@ class breathWorker(QThread):
                 if(minSatisfied and maxSatisfied):
 #                    print("VolumeValues satisy")#,restaurant['VolumeValue']['value'])
                     pressValuFromJson = restaurant['VolumeValue']['value']
-
+            for oxyValue in data['OxygenValues']:
+                minSatisfied = int(oxyValue['OxygenValue']['min'])<=int(oxValue)
+                maxSatisfied = int(oxyValue['OxygenValue']['max'])>=int(oxValue)
+                if(minSatisfied and maxSatisfied):
+          #         print("Oxygen",oxyValue['OxygenValue']['value'])
+                    oxyValuFromJson = oxyValue['OxygenValue']['value']
 
             return pressValuFromJson,oxyValuFromJson        
         
@@ -626,16 +639,71 @@ class backendWorker(QThread):
         data2transfer = self.dataUpdate["pressure"]+','+self.dataUpdate["intime"]+','+self.dataUpdate["outtime"]+','+self.dataUpdate["peep"]+','+self.dataUpdate["fio2"]
         print("DEBUG: "+data2transfer)
         #self.ser1.write(data2transfer.encode())
+        
+    def getDataForProcessing(self):
+        #TO-DO - dataDict - has to be renamed to meaningful name
+        global graph
+        ALLOWABLE_PERCENT = 0.1 #10 PERCENT
+        #inhale = graph
+#        print("GRAPH>>>>",graph)
+        ADCdata = [0]*4
+        MAX_TRIGGER = -10
+        
+        for i in range(4):
+            try:
+                ADCdata[i] = adc.read_adc(i, gain=GAIN)
+                time.sleep(0.05)
+                if(i==0):
+                    pVolts = (ADCdata[0]/8000)
+                    print("pVolts val",pVolts)
+                    pressure = ((pVolts-2.5)/0.2)*5
+                    pressure = round(pressure,2)
+                    print("calculated pressure  >>>> ",pressure)
+                    dPresLength = len(self.dataDict["Dpress+"])
+                    print("dPresLength   >>>> ",dPresLength)
+                    if(dPresLength == 0):
+                        self.dataDict["Dpress+"].append(pressure)
+                    if(graph == 0):    
+                        if(dPresLength>0):
+                            previousPressure = self.dataDict["Dpress+"][dPresLength-1]
+                            print("Before Calculation")
+                            print("PreviouspressureValue", self.dataDict["Dpress+"][dPresLength-1])
+                            print("currentpressureValue", pressure)
+                            
+                            discountPressure = previousPressure * ALLOWABLE_PERCENT
+                            previousPressure = previousPressure - discountPressure
+                            if(pressure > previousPressure):
+                                self.dataDict["Dpress+"].append(pressure)
+                            else:
+                                self.dataDict["Dpress+"].append(previousPressure)
+                            
+                            print("Afer Calculation")    
+                            print("PreviouspressureValue",previousPressure)# self.dataDict["Dpress+"][dPresLength-1])
+                            print("currentpressureValue", pressure)
+                    if(graph ==1):
+                        self.dataDict["Dpress+"].append(pressure)
+                        oxy_data = ADCdata[2]*0.1875
+                        oxy = int(oxy_data)
+                        self.dataDict["o2conc"].append(oxy) # >> Remove comment - later   
+                         
+                    
+            except:
+                    f = 1
+
+    
+            
+        return self.dataDict    
+
 
     def getdata(self):
         global gf,control,lamda_b,lavs,in_time,ex_time
         global ini,rap,adc,ti_val,ti_value,test
-        global pressure_support,pressure_val
+        global pressure_support,pressure_val,volume_val
         global firstvalue,trigger_data,sangi,Slide
         global graph,mod_val_data,currentP,currentPo
-        global ps_change,kz,value,peep_val,test_ex
+        global ps_change,kz,value,peep_val,test_ex,pressure
         global emergency,p_s,flag,p_value,p_list,p_cal
-        global fio_val,prev_data,ps_end,es,mod_val
+        global fio_val,prev_data,ps_end,es,mod_val,clear_set
          
         ko = 0
         #prev_data = 0
@@ -649,325 +717,245 @@ class backendWorker(QThread):
         slide_p = int(pressure_val+peep_val)
         slide_peep = int(pressure_val)/4
 
-        data = [0]*4
 
-#        try:
-        endtime = time.time()+0.1
-        while(time.time()<endtime):      
-            for i in range(4):
-                try:
-                    data[i] = adc.read_adc(i, gain=GAIN)
-                    time.sleep(0.1)
-                    sen_data = 1
-                except:
-                    f = 1
-            #time.sleep(0.4)
-    #        except:
-                    print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*data))
-    #            sen_data = 0
-            
-            if(sen_data ==1):    
-                p_data = (data[0]/8000) #*0.1875)/1503
-                oxy_data = data[2]*0.1875
-                oxy = int(oxy_data)
-                self.dataDict["o2conc"].append(oxy)
-                #print('oxy_volt',oxy_data)
-     #           print("voltage",p_data)
-                if(ini == 0):
-                    #ini += 1
-                    if(p_data < 2.0):
-                        p_data = 2.5
-                        prev_data = p_data
-    #                    print('prev_data assigned in the start')
-                    if(p_data > 2.0):
-                        p_data = round(p_data,1)
-                        prev_data = p_data    
-                if(p_data > 2.0):
-                    p_data = round(p_data,1)
-                    prev_data = p_data
-                if(p_data < 2.0):
-                    p_data = prev_data
-    #                print('prev_data assigned:',prev_data)
-                p_list.append(p_data)
-    #            print('press_volt',p_data)
-    #            print('sensor_data_list',p_list)
-            #if(mod_val in [2]):    
-            if(graph == 0) and (sen_data == 1):   
-                p_data = round(p_data,1)
-    #            print('sensor_data',p_list)
-    #            print('len',len(p_s))
-    #            print('p_s',p_s)
-                p_s.append(p_data)
-                present_value = p_s[-1]
-                if(present_value<3 and present_value>2.5):
-                    if(present_value >0):  
-                        p_value = present_value
-                if(present_value>3):
-                    try:
-                        temp1 = present_value
-                        temp2 = p_s[-2]
-                        temp3 = p_s[-3]
-                        temp4 = p_s[-4]
-                        temp5 = p_s[-5]
-                        #temp6 = p_s[-6]
-                        #temp7 = p_s[-7]
-                        #temp8 = p_s[-8]
-                        #temp9 = p_s[-9]
-                        #temp10 = p_s[-10]
-                        #temp11 = p_s[-11]
-                        if(temp1 and temp2 and temp3 and temp4 and temp5):# and temp6 and temp7 and temp8 and temp9 )>3:
-                            p_value = present_value
-                    except:
-                        n = 0
-                p_cal.append(p_value)
-     #       print('calulated_sensor_value',p_cal)
-            pressurel.append(p_data)       
-            print('8888',pressurel)
-            pressurel.sort(reverse = True)
-            #else:
-                #pressurel.append(p_data)
 
-      
-        if(graph == 0):
-#            print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*data))
-
-#            print(data[0]/8000)
-#            diff_pre = float(data[1]/8000)
-#            print("diffP+in",diff_pre)
-
-            try:
-                
+        try:
+            if clear_set == 1:
                 self.dataDict["Dpress+"].clear()
-    #            print("cleared")
+                print("cleared")
                 self.currentPressure_list.clear()
                 self.seam.clear()
-                    
-
-            except:
-                drk = 1
-
-            
-            if(ini == 0):
-                    firstvalue = round(pressurel[0],2)
-                    currentPressure = firstvalue
-                    ini += 1
-
-            else:
-                    nextvalue = round(pressurel[-1],2)
-
-                    if(nextvalue > firstvalue):
-                        currentPressure = nextvalue
-                        firstvalue = currentPressure
-                    elif(nextvalue < firstvalue):
-                        currentPressure = firstvalue
-                        firstvalue = currentPressure
-                    else:
-                        currentPressure = firstvalue
-            
-            if (currentPressure < pressurel[0]):
-                currentPressure = pressurel[0]
-            else:
-               currentPressure = firstvalue
-
-            if(len(self.dataDict["Dpress+"])>300):
-                self.dataDict.clear()
-                self.dataDict = {
-                                    "curr_act" : 0,
-                                    "o2conc" : [],
-                                    "AirV" : [],
-                                    "Dpress+" : [],
-                                    "Dpress-" : [],
-                                    "press+" : [],
-                                    "press-" : [],
-                                    "co2" : [],
-                                    "temp" : [],
-                                    "hum" : []
-                                    }
-            press = round(currentPressure,2)
-
-            pressure = ((press-2.5)/0.2)
-
-
-            pressure = (round(pressure,1))
-            test = pressure*5
-            test_in = pressure*5
-#            print("pip value",test)
-            ###
-            '''
-            if mod_val==2 and volume_val < test_in:
-                emergency = 3
-            '''
-            ###   volume based pressure value
-        
-            if mod_val in [3,4,6]:
-                pressure_va = pressure_val + peep_val
-                
-   
-
-
-                if(pressure_va < test_in):
-                    test_in = pressure_va
-                    self.dataDict["Dpress+"].append(test_in) 
-
-                else:
-                    self.dataDict["Dpress+"].append(pressure*5)
-                max_value = max(self.dataDict["Dpress+"])
-                print("max",max_value)
-                if(pressure_val < test_in):
-                    emergency = 3
-                if (pressure_val > max_value):
-                    emergency = 6
-                if (pressure_val == max_value):
-                    emergency = 9    
-                    
-             
-            else:
-                if emergency != 0:
-                    self.dataDict["Dpress+"].append(pressure)
-                    
-                else:    
-                    self.dataDict["Dpress+"].append(test_in)
-
-        if (graph == 1):
-            
-
-#            diff_pre = float(data[1]/8000)
-#            print("diffP",diff_pre)
-            self.currentPressure_list.append((data[0])/8000)
-#            print("data",(data[0])/8000)
-
-            p = abs(self.currentPressure_list[-1])
-
-#            print("exhake_p",p)    
-            death =self.currentPressure_list[1:5]
-#            print("death",death)
-       
-            if len(death) >= 2:
-                naoh = sum(death)/len(death)
-                
-                naoh = round(naoh,1)
-#                print("death",death)
-                
-            if mod_val in [1,2,3,5] and len(death) >= 2 and len(death) < 4:
-                if(naoh <= 2.5):
- #                   print("naoh",naoh)
-                    emergency = 1
-                else:
-                    emergency = 0
-                    
-
-            pi = round(p,1)
-            pu = ((pi-2.5)/0.2)
-            pu = (round(pu,1))
-            currentP = pu*5
-            test_ex= pu*5
-#            print("test_ex",test_ex)
-                 
-            peep_var = peep_val+2
-
-                
-            if(mod_val in [2,3,4,6]):
-                ###
-                '''
-                if(mod_val == 4):
-                    time.sleep(0.5)
-                else:
-                    time.sleep(0.2)
-                if(sangi == 1):
-                    print('waiting for exhalation')
-                    time.sleep(1.5)
-                '''
-                ###
-#                trigger_data = abs(trigger_data)
-#                trigger = peep_val - trigger_data
-#                trigger_data = trigger_data
-#                print("trigger_data : cp",trigger_data,currentP)
-                sangi = 0
-                self.false_trigger = len(self.currentPressure_list)
-
-                if (control == 1 and currentP < trigger_data):
-                    if self.false_trigger > 4 :# trigger_data):
-                        lamda_b = time.time()
-                        
-                        mod_val_data = 1
-                        lavs = 1
-                        print('set_pre,act_pre: ',trigger_data,currentP)
-
-            
-            if(len(self.dataDict["Dpress+"])>300):
+                clear_set = 0
+            if mod_val == 5 and len(self.dataDict["Dpress+"])<30:
                 self.dataDict["Dpress+"].clear()
-                gf = 1
-                self.dataDict = {
-                        "curr_act" : 0,
-                        "o2conc" : [],
-                        "AirV" : [],
-                        "Dpress+" : [],
-                        "Dpress-" : [],
-                        "press+" : [],
-                        "press-" : [],
-                        "co2" : [],
-                        "temp" : [],
-                        "hum" : []
-                    }
-            
-            
-            
-            
-            if (Slide == 1):
+                print("///cleared")
                 
-                for i in np.arange(slide_p,slide_peep,-0.5):
-                    roundi = round(i,1)
-                    self.dataDict["Dpress+"].append(roundi)
-                    Slide = 0
+
+        except:
+            drk = 1
+                    #TO-DO - dataDict - has to be renamed to meaningful name
+        a = True
+        ALLOWABLE_PERCENT = 0.1 #10 PERCENT
+        #inhale = graph
+#        print("GRAPH>>>>",graph)
+        ADCdata = [0]*4
+        MAX_TRIGGER = -10
+        
+        for i in range(4):
+            try:
+                ADCdata[i] = adc.read_adc(i, gain=GAIN)
+                time.sleep(0.05)
+                if(a==True):
+                    oxy_data = ADCdata[2]*0.1875
+                    oxy = int(oxy_data)
+                    if oxy != 0:
+                        oxy_value = oxy
+                    if oxy == 0:
+                        oxy = oxy_value               #conuslt with authority for oxygen value is zerpo
+                    self.dataDict["o2conc"].append(oxy)
+                    pVolts = (ADCdata[0]/8000)
+#                    print("pVolts val",pVolts)
+                    pressure = ((pVolts-2.5)/0.2)*5
+                    pressure = round(pressure,2)
+                    if pressure < MAX_TRIGGER:
+                        pressure = 0
+#                    print("calculated pressure  >>>> ",pressure)
+                    dPresLength = len(self.dataDict["Dpress+"])
+#                    print("dPresLength   >>>> ",dPresLength)
+                    if(dPresLength == 0):
+                        self.dataDict["Dpress+"].append(pressure)
+                    if(graph == 0):    
+                        if(dPresLength>0):
+                            previousPressure = self.dataDict["Dpress+"][dPresLength-1]
+#                            print("Before Calculation")
+#                            print("PreviouspressureValue", self.dataDict["Dpress+"][dPresLength-1])
+#                            print("currentpressureValue", pressure)
+                            
+                            discountPressure = previousPressure * ALLOWABLE_PERCENT
+                            previousPressure = previousPressure - discountPressure
+                            if(pressure > previousPressure):
+                                self.dataDict["Dpress+"].append(pressure)
+                            else:
+                                self.dataDict["Dpress+"].append(previousPressure)
+                            
+#                            print("Afer Calculation")    
+#                            print("PreviouspressureValue",previousPressure)# self.dataDict["Dpress+"][dPresLength-1])
+#                            print("currentpressureValue", pressure)    
+
+ 
+
+                    if(len(self.dataDict["Dpress+"])>300):
+ #                       self.dataDict.clear()
+                        self.dataDict = {
+                                            "curr_act" : 0,
+                                            "o2conc" : [],
+                                            "AirV" : [],
+                                            "Dpress+" : [],
+                                            "Dpress-" : [],
+                                            "press+" : [],
+                                            "press-" : [],
+                                            "co2" : [],
+                                            "temp" : [],
+                                            "hum" : []
+                                            }
+
+                    #
+                    if mod_val in [3,4,6]:
+                        ###
+                        '''
+                        pressure_va = pressure_val + peep_val
+                        if(pressure_va < pressure):
+                            new_test = pressure_va
+                            self.dataDict["Dpress+"].append(new_test) 
+
+                        else:
+                            self.dataDict["Dpress+"].append(pressure*5)
+                        '''
+                        ###
+                        max_value = max(self.dataDict["Dpress+"])
+
+                        if(pressure_val < max_value):
+                            emergency = 3
+                        if (pressure_val > max_value):
+                            emergency = 6
+                        if (pressure_val == max_value):
+                            emergency = 9    
+    
+                         
+
+                if (graph == 1):
+
+                    self.currentPressure_list.append(pressure)
+                    p = abs(self.currentPressure_list[-1])
+                    death =self.currentPressure_list[10:28]
+ #                   print("eme",self.currentPressure_list)
+                    if len(death) >= 10:
+                        naoh = sum(death)/len(death)
+                        
+                        naoh = round(naoh,1)
+  #                      print("death",naoh)
+                        
+                    if mod_val in [1,2,3,5] and len(death) >= 18 and len(death) < 28:
+                        if(naoh <= 0):
+         #                   print("naoh",naoh)
+                            emergency = 1
+                        else:
+                            emergency = 0
+                            
+
+
+  
+                    currentP = pressure
+                    test_ex= pressure
+
+                    peep_var = peep_val+2
+
+                        
+                    if(mod_val in [2,3,4,6]):
+                        ###
+                        '''
+                        if(mod_val == 4):
+                            time.sleep(0.5)
+                        else:
+                            time.sleep(0.2)
+                        if(sangi == 1):
+                            print('waiting for exhalation')
+                            time.sleep(1.5)
+                        '''
+                        ###
+        #                trigger_data = abs(trigger_data)
+        #                trigger = peep_val - trigger_data
+        #                trigger_data = trigger_data
+        #                print("trigger_data : cp",trigger_data,currentP)
+                        sangi = 0
+                        self.false_trigger = len(self.currentPressure_list)
+
+                        if (control == 1 and currentP < trigger_data):
+                            if self.false_trigger > 4 :# trigger_data):
+                                lamda_b = time.time()
+                                
+                                mod_val_data = 1
+                                lavs = 1
+                                print('set_pre,act_pre: ',trigger_data,currentP)
+
+                    
+                    if(len(self.dataDict["Dpress+"])>300):
+#                        self.dataDict["Dpress+"].clear()
+                        gf = 1
+                        self.dataDict = {
+                                "curr_act" : 0,
+                                "o2conc" : [],
+                                "AirV" : [],
+                                "Dpress+" : [],
+                                "Dpress-" : [],
+                                "press+" : [],
+                                "press-" : [],
+                                "co2" : [],
+                                "temp" : [],
+                                "hum" : []
+                            }
+                    
+                    
+                    
+                    
+                    if (Slide == 1):
+                        
+                        for i in np.arange(slide_p,slide_peep,-0.5):
+                            roundi = round(i,1)
+         #                   self.dataDict["Dpress+"].append(roundi)
+                            Slide = 0
+                    
+                    ###
+                    '''
+
+
+                    if Slide == 1:
+                          if es < 4:
+                              es = 4
+                #         ps_end = round(ps_end,1)
+                #         baW_ps = time.time()+ps_end
+                #         while(time.time()>baW_ps):
+                          print("entry_no")
+                          while(test_ex > es):
+                             print("test_ex:es:",test_ex,es)
+                             round_i = slide_p - 0.5
+                             if round_i == es:
+                                 break
+                             self.dataDict["Dpress+"].append(round_i)
+                             slide_p = round_i
+        #                     print("ps_curve",slide_p)
+                             time.sleep(1)
+                          Slide = 0
+                    
+                    '''
+                    ###
+                    test = pressure
+
+                    if test > peep_val:
+                        testu = test
+                    else:
+
+                        testu = test#peep_va
+           
+                    self.seam.append(testu)
+                    if len(self.seam)>4:
+                        self.s = self.seam[-1]
+                    else:
+                        self.s = abs(self.seam[-1])
+        #            print("self,ss",self.seam)
+                  
+                    if (self.s < peep_var):
+                        currentPo = 1
+
+        #            print("exhale",self.s)
+                    self.dataDict["Dpress+"].append(self.s)
+ #                   print("len : self.dataDict:",len(self.dataDict["Dpress+"]),self.dataDict["Dpress+"])
+                    ini = 0
+                    first = 1
+            except:
+                f = 1
             
-            ###
-            '''
-
-
-            if Slide == 1:
-                  if es < 4:
-                      es = 4
-        #         ps_end = round(ps_end,1)
-        #         baW_ps = time.time()+ps_end
-        #         while(time.time()>baW_ps):
-                  print("entry_no")
-                  while(test_ex > es):
-                     print("test_ex:es:",test_ex,es)
-                     round_i = slide_p - 0.5
-                     if round_i == es:
-                         break
-                     self.dataDict["Dpress+"].append(round_i)
-                     slide_p = round_i
-#                     print("ps_curve",slide_p)
-                     time.sleep(1)
-                  Slide = 0
-            
-            '''
-            ###
-            test = pu*5
-
-            if test > peep_val:
-                testu = test
-            else:
-
-                testu = test#peep_va
-   
-            self.seam.append(testu)
-            if len(self.seam)>4:
-                self.s = self.seam[-1]
-            else:
-                self.s = abs(self.seam[-1])
-#            print("self,ss",self.seam)
-          
-            if (self.s < peep_var):
-                currentPo = 1
-
-#            print("exhale",self.s)
-            self.dataDict["Dpress+"].append(self.s)
-            ini = 0
-            first = 1
-
-   #inc in oxygen %
+           #inc in oxygen %
 
        
         return self.dataDict
@@ -983,6 +971,8 @@ class backendWorker(QThread):
         print("starting thread")
         while self.running:
             data_m = self.getdata()
+           # data_m = self.getDataForProcessing()
+            
         #    print('data_m',data_m)
    #         if data_m != None:
    #             self.threadSignal.emit(data_m)
@@ -1150,7 +1140,7 @@ class App(QFrame):
                 if HP_catch == 1:
                     Hp +=1
                     HP_catch = 0    
-                    print("hpp",Hp)
+     #               print("hpp",Hp)
                 if Hp >= 5:
                     Hp = 0
                     if emergency == 3: 
@@ -1160,7 +1150,9 @@ class App(QFrame):
                     
 #                    self.alarm.setText('High-Pr')
                     self.alarm.setStyleSheet("color: white;  background-color: red")
-                
+                    if emergency == 9:
+                        self.alarm.setStyleSheet("color: white;  background-color: green")
+                    
             if emergency == 2:
                 self.lmvd.setText('High-vol')
                 Hv +=1
@@ -1186,7 +1178,7 @@ class App(QFrame):
     def update_plot_data(self):
         
         global data_m,rr_value,i_rr,ti,mod_val,pressure_val,pressure_pdata,two,ex_time
-        
+        global pressure
         if self.bthThread.breathStatus == 0:
             global data_m,peep_val
             
@@ -1235,9 +1227,12 @@ class App(QFrame):
             self.lbpeepdata.setText('-')
 
             try:
+                a = max(data_m['Dpress+'])
+                self.pip = int(a)
 
                 if(mod_val ==5):
-                    self.lpresd.setText(str(pressure))
+                    self.lpresd.setText(str(pressure))#self.pip))
+                    self.lbpdata.setText(str(pressure))#self.pip))
                     self.lbpmeandata.setText('-')
 
                 if(mod_val in [4,6,2,3]):
@@ -1255,10 +1250,7 @@ class App(QFrame):
                     '''
                     ###
        #             if len(data_m['Dpress+'])>=2:
-                    a = max(data_m['Dpress+'])
 
-
-                    self.pip = int(a)
                     
                     self.lpresd.setText(str(self.pip))
                     if(mod_val == 2 or mod_val == 3):
