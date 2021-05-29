@@ -639,7 +639,7 @@ class backendWorker(QThread):
         data2transfer = self.dataUpdate["pressure"]+','+self.dataUpdate["intime"]+','+self.dataUpdate["outtime"]+','+self.dataUpdate["peep"]+','+self.dataUpdate["fio2"]
         print("DEBUG: "+data2transfer)
         #self.ser1.write(data2transfer.encode())
-        
+        #To-do :Remove later
     def getDataForProcessing(self):
         #TO-DO - dataDict - has to be renamed to meaningful name
         global graph
@@ -666,9 +666,9 @@ class backendWorker(QThread):
                     if(graph == 0):    
                         if(dPresLength>0):
                             previousPressure = self.dataDict["Dpress+"][dPresLength-1]
-                            print("Before Calculation")
-                            print("PreviouspressureValue", self.dataDict["Dpress+"][dPresLength-1])
-                            print("currentpressureValue", pressure)
+                            #print("Before Calculation")
+                            #print("PreviouspressureValue", self.dataDict["Dpress+"][dPresLength-1])
+                            #print("currentpressureValue", pressure)
                             
                             discountPressure = previousPressure * ALLOWABLE_PERCENT
                             previousPressure = previousPressure - discountPressure
@@ -677,9 +677,9 @@ class backendWorker(QThread):
                             else:
                                 self.dataDict["Dpress+"].append(previousPressure)
                             
-                            print("Afer Calculation")    
-                            print("PreviouspressureValue",previousPressure)# self.dataDict["Dpress+"][dPresLength-1])
-                            print("currentpressureValue", pressure)
+                            #print("Afer Calculation")    
+                            #print("PreviouspressureValue",previousPressure)# self.dataDict["Dpress+"][dPresLength-1])
+                            #print("currentpressureValue", pressure)
                     if(graph ==1):
                         self.dataDict["Dpress+"].append(pressure)
                         oxy_data = ADCdata[2]*0.1875
@@ -970,7 +970,7 @@ class backendWorker(QThread):
         #self.sendValues()
         print("starting thread")
         while self.running:
-            data_m = self.getdata()
+           data_m = self.getdata()
            # data_m = self.getDataForProcessing()
             
         #    print('data_m',data_m)
@@ -1178,7 +1178,7 @@ class App(QFrame):
     def update_plot_data(self):
         
         global data_m,rr_value,i_rr,ti,mod_val,pressure_val,pressure_pdata,two,ex_time
-        global pressure
+        global pressure,fio_val
         if self.bthThread.breathStatus == 0:
             global data_m,peep_val
             
@@ -1359,22 +1359,19 @@ class App(QFrame):
             
         
         try:
-                #self.y = self.y[1:]
-                #self.y.append(int(data_m['Dpress+'][-1]))                pressure = data_m['Dpress+'][-1]
-#                pres = round()
-#                print('pressure',pressure)
-                #*5
+
+                o2 = int(data_m["o2conc"][-1])
+                Compare_fio = fio_val*0.1
+                fio2 = int(fio_val - Compare_fio)
                 
-              #  o2s = str(data_m["o2conc"][-1])
-                o2 = int(data_m["o2conc"][-1]) #"{.:2f}".format(o2s)
-      #          print('o2', o2)
-                o2s = "{:.1f}".format(o2)
-                if(o2 < 11):
+                if( fio2 > o2):
                     self.laprd.setStyleSheet("background-color: red")
-                    self.laprd.setText(str(o2s))
-                if(o2 < 100) and (o2>10):
+                    self.laprd.setText(str(o2))
+                   
+                else:
                     self.laprd.setStyleSheet("background-color: green")
-                    self.laprd.setText(str(o2s))
+                    self.laprd.setText(str(o2))
+                   
                 ###
                 '''    
                 if mod_val in [2,3,4]:
@@ -1498,8 +1495,8 @@ class App(QFrame):
         self.setLayout(windowLayout)
         self.mode_set = 2
         
-        self.show()
-        #self.showFullScreen()
+        #self.show()
+        self.showFullScreen()
     def readSettings(self,i):
         global mod_val
         
