@@ -609,8 +609,10 @@ class backendWorker(QThread):
                     pVolts = round(pVolts,2)
                     pressure = ((pVolts - pressure_voltage)/0.2)*5
                     pressure = round(pressure,1)
-#                    print('>> Calibrated_pressure >>', pressure_voltage)
-#                    print('>> pressure >>', pVolts)
+                    
+                    print('>> pVolts >>', pVolts)
+                    print('>> pressure_voltage >>', pressure_voltage)
+                    print('>> pressure >>', pressure)
                     if pressure < MAX_TRIGGER:
                         pressure = 0
                     self.average_pressure.append(pressure)
@@ -669,18 +671,21 @@ class backendWorker(QThread):
                             emergency = 9      
 
                 if (graph == 1):
+                    
+                    
 
                     self.currentPressure_list.append(pressure)
                     Entry_point = len(self.currentPressure_list)
                     p = abs(self.currentPressure_list[-1])
-                    disconnect =self.currentPressure_list[10:20]
+                    disconnect =self.currentPressure_list[10:]
                     print("disconnect",disconnect)
                      
-                    if len(disconnect) >= 10:
+                    if Entry_point >= 10:
+                        print("disconnect",disconnect)
                         disconnect_alarm = sum(disconnect)/len(disconnect) 
                         disconnect_alarm = round(disconnect_alarm,1)
                         
-                    if mod_val in [2,3] and len(disconnect) >= 10 and len(disconnect) < 20:
+                    if mod_val in [2,3] and Entry_point >= 10 and Entry_point < 20:
                         if(disconnect_alarm <= 0):
                             emergency = 1
                         else:
@@ -699,7 +704,7 @@ class backendWorker(QThread):
                         self.false_trigger = len(self.currentPressure_list)
 
                         if (control == 1 and currentP < trigger_data):
-                            if self.false_trigger > 4 :# trigger_data):
+                            if self.false_trigger > 10 :# trigger_data):
                                 lamda_b = time.time()
                                 
                                 mod_val_data = 1
@@ -809,6 +814,8 @@ class App(QFrame):
         self.value_set()
        # self.fio2_set()
         self.encoder()
+        self.pressureGraph_enable = True
+        self.volumeGraph_enable = False
 
         
     def comp_warning(self):
@@ -882,7 +889,13 @@ class App(QFrame):
         self.timer_a.start()
         self.layout.addWidget(self.graphwidget,2,0,5,4)
         #self.data_line.clear()
-    
+    def pressureGraph_button(self):
+        self.pressureGraph_enable = True
+        self.volumeGraph_enable = False
+        self.graph()
+        self.pressureGraph.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.volumeGraph.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        
     def alarm_data(self):
         global emergency,Hp,Hv,HP_catch
         a = 0
@@ -1094,21 +1107,21 @@ class App(QFrame):
             
         #
         try:
-            
-            self.y = self.y[1:]
-            a = randint(0,100)
-            y_data = int(data_m['Dpress+'][-1])
-            self.y.append(y_data)
-            self.x = self.x[1:]
-            self.x.append(self.x[-1] + 1)
-            len_x = len(self.x)
-            len_y = len(self.y)
-            if(len_x > len_y):
-                diff_len = len_x - len_y
-                self.x = self.x[diff_len:]
-            
- 
-            self.data_line.setData(self.x,self.y)
+            if(self.pressureGraph_enable == True):
+                self.y = self.y[1:]
+                a = randint(0,100)
+                y_data = int(data_m['Dpress+'][-1])
+                self.y.append(y_data)
+                self.x = self.x[1:]
+                self.x.append(self.x[-1] + 1)
+                len_x = len(self.x)
+                len_y = len(self.y)
+                if(len_x > len_y):
+                    diff_len = len_x - len_y
+                    self.x = self.x[diff_len:]
+                
+     
+                self.data_line.setData(self.x,self.y)
 
         except:
                 pass
@@ -1127,17 +1140,25 @@ class App(QFrame):
         self.timer1.setInterval(100)
         self.timer1.timeout.connect(self.update_plot_data2)
         self.timer1.start()
-        self.layout.addWidget(self.graphWidget,3,0,3,4)
+        self.layout.addWidget(self.graphWidget,2,0,5,4)
 
     def update_plot_data2(self):
+        if(self.volumeGraph_enable == True):
+            self.x2 = self.x2[1:]  # Remove the first y element.
+            self.x2.append(self.x2[-1] + 1)  # Add a new value 1 higher than the last.
 
-        self.x2 = self.x2[1:]  # Remove the first y element.
-        self.x2.append(self.x2[-1] + 1)  # Add a new value 1 higher than the last.
+            self.y2 = self.y2[1:]  # Remove the first 
+            self.y2.append( randint(0,100))  # Add a new random value.
 
-        self.y2 = self.y2[1:]  # Remove the first 
-        self.y2.append( randint(0,100))  # Add a new random value.
+            self.data_line2.setData(self.x2, self.y2)  # Update the data.
+        
+    def volumeGraph_button(self):
+        self.pressureGraph_enable = False
+        self.volumeGraph_enable = True
 
-        self.data_line2.setData(self.x2, self.y2)  # Update the data.
+        self.graph2()
+        self.pressureGraph.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        self.volumeGraph.setStyleSheet("background-color: black; color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")   
 
     def graph3(self):
         self.graphWidget = pg.PlotWidget()
@@ -2475,6 +2496,20 @@ class App(QFrame):
         self.lpower.setStyleSheet("color: white;  background-color: green")
         self.lpower.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.layout.addWidget(self.lpower,0,6)
+        
+        self.pressureGraph = QPushButton('Pressure Graph')
+        self.pressureGraph.setFont(QFont('Arial', 11))
+        self.pressureGraph.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.lalarm.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.pressureGraph.clicked.connect(self.pressureGraph_button)
+        self.layout.addWidget(self.pressureGraph,7,1)
+        
+        self.volumeGraph = QPushButton('Volume Graph')
+        self.volumeGraph.setFont(QFont('Arial', 11))
+        self.volumeGraph.setStyleSheet("background-color: white; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
+        #self.lalarm.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.volumeGraph.clicked.connect(self.volumeGraph_button)
+        self.layout.addWidget(self.volumeGraph,7,2)
 
         self.bes = QComboBox()
         self.bes.addItem("ES %")
