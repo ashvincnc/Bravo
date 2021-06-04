@@ -875,7 +875,7 @@ class App(QFrame):
         self.graphwidget.setBackground('#0000')
         self.graphwidget.setLabel('left', 'Pressure')
         self.graphwidget.setLabel('bottom', 'x100 (Time in milliseconds) ')
-        self.graphwidget.getPlotItem().hideAxis('bottom')
+        #self.graphwidget.getPlotItem().hideAxis('bottom')
 
         pen = pg.mkPen(color='y')
         self.data_line =  self.graphwidget.plot(self.x,self.y,pen=pen) #fillLevel=0,brush=(150,50,150,50))           #pen=pen)
