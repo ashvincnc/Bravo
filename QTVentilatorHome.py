@@ -38,12 +38,14 @@ global adc
 global currentPo,Slide,Hp,Hv,HP_catch
 global trigger_data
 global data_m,control,ti_value
+global x_max_value
 
 
 global es
 global comp_on
 global slider
 global pressure_voltage
+global cycle_count
 
 global set_ventilator
 set_ventilator  =  []
@@ -52,8 +54,7 @@ print("set_ventilator",set_ventilator)
 if set_ventilator == "icu":
     set_ventilator = 1
 else:
-    set_ventilator = 0
-print("set_ventilator",set_ventilator)    
+    set_ventilator = 0    
 calibration = Calibration()
 pressure_voltage = calibration.pressure_calibration()
 oxygen_voltage = calibration.oxygen_calibration()
@@ -76,6 +77,7 @@ currentPo = 0
 Hp = 0
 Hv = 0
 slider = 0
+cycle_count = 0
 
 ex_time = 1.5
 ie_value = 2
@@ -85,6 +87,7 @@ peep_val = 4
 es = 7
 mod_val = 2
 trigger_data = -3
+x_max_value = 800
 
 
 def start_up():
@@ -108,7 +111,6 @@ def start_up():
     data = adc.read_adc(0, gain=1)
     data = data/8000
     data = round(data,1)
-    print('adc_val',data)
     if(data > 2.8):
         comp_on = True
     else:
@@ -224,7 +226,7 @@ class breathWorker(QThread):
         
 
     def stop(self):
-        print("stopping breather thread")
+       # print("stopping breather thread")
         self.pPWM.ChangeDutyCycle(0)
         self.o2PWM.ChangeDutyCycle(0)
         
@@ -248,7 +250,7 @@ class breathWorker(QThread):
 
         if (mod_val == 4):
              
-             print('in mode4')
+             #print('in mode4')
 
              while self.running:
                  end = time.time()+15
@@ -297,19 +299,19 @@ class breathWorker(QThread):
                          a = 0
                         
                  if(plan ==0 and mod_val_data == 0):
-                      print('mode changed to 1')
+                      #print('mode changed to 1')
                       mod_val = 3
                       check = 1
                       break
         
         if ( mod_val == 3):
-            print('mode3')
+            #print('mode3')
             while self.running:
                 
                 self.pwm_in()
                 self.pwm_out()
                 if (lavs == 1 and mod_val_data == 1 and check == 1):
-                    print('inhale start 1')
+                    #print('inhale start 1')
                     mod_val = 4
                     mod_val_data = 1
                     lavs = 0
@@ -317,7 +319,7 @@ class breathWorker(QThread):
                                   
            
         if mod_val in [2]:
-            print('mode 2 enabled')
+            #print('mode 2 enabled')
             while self.running:
                 
                 self.pwm_in()
@@ -325,12 +327,12 @@ class breathWorker(QThread):
 
 
         if (mod_val == 5):
-            print('mode 5 enabled')
+            #print('mode 5 enabled')
             while self.running:
-                print('mode 5')
+                #print('mode 5')
                 self.pwm_in()
             while(self.running == False):
-                    print('mode 5 off')
+                    #print('mode 5 off')
                     self.pwm_out()
                     time.sleep(2)
                     break
@@ -342,15 +344,15 @@ class breathWorker(QThread):
                 global control
                 control = 0
                 HP_catch = 1
-                print("self.running.loop")
-                print('')
+                #print("self.running.loop")
+                #print('')
                 self.start_time = time.time()
                 graph = 0
                 
                 self.pPWM.ChangeDutyCycle(self.pressureCycleValue[0])
                 self.o2PWM.ChangeDutyCycle(self.pressureCycleValue[1])
-                print('pressure_cycle:',self.pressureCycleValue[0])
-                print('oxygen_cycle:',self.pressureCycleValue[1])
+                #print('pressure_cycle:',self.pressureCycleValue[0])
+                #print('oxygen_cycle:',self.pressureCycleValue[1])
                 
                 GPIO.output(26,GPIO.LOW)
                 GPIO.output(14,GPIO.LOW)
@@ -369,8 +371,8 @@ class breathWorker(QThread):
                 global graph,peep_val,ti,currentPo
                 global rr_value,test,test_ex,fio_val
                 global mod_val_data,mod_val,clear_set
-                global control,trigger_value
-                print("")
+                global control,trigger_value,cycle_count
+                #print("")
 
                 control = 1
                 self.peep = int(peep_val)
@@ -392,7 +394,7 @@ class breathWorker(QThread):
                 
                 if mod_val in [2,3]:
                     if lavs == 1 and mod_val_data == 1:
-                        print("trigger done in modes")
+                        #print("trigger done in modes")
                         self._exhale_event.wait(0)
                         
                         mod_val_data  = 0
@@ -409,12 +411,14 @@ class breathWorker(QThread):
                     rr_value = int(60/(int(self.end_time) - int(self.start_time)))
                     if fio_val > 85:
                         GPIO.output(19,GPIO.LOW)
-                        print("comp_off")
+                        #print("comp_off")
                     else:
                         GPIO.output(19,GPIO.HIGH)
-                        print("comp_on")
+                        #print("comp_on")
                 except:
                     pass
+                cycle_count += 1
+
                     
                     
     def pwm_ps_out(self):
@@ -609,10 +613,6 @@ class backendWorker(QThread):
                     pVolts = round(pVolts,2)
                     pressure = ((pVolts - pressure_voltage)/0.2)*5
                     pressure = round(pressure,1)
-                    
-                    print('>> pVolts >>', pVolts)
-                    print('>> pressure_voltage >>', pressure_voltage)
-                    print('>> pressure >>', pressure)
                     if pressure < MAX_TRIGGER:
                         pressure = 0
                     self.average_pressure.append(pressure)
@@ -678,10 +678,10 @@ class backendWorker(QThread):
                     Entry_point = len(self.currentPressure_list)
                     p = abs(self.currentPressure_list[-1])
                     disconnect =self.currentPressure_list[10:]
-                    print("disconnect",disconnect)
+                    #print("disconnect",disconnect)
                      
                     if Entry_point >= 10:
-                        print("disconnect",disconnect)
+                        #print("disconnect",disconnect)
                         disconnect_alarm = sum(disconnect)/len(disconnect) 
                         disconnect_alarm = round(disconnect_alarm,1)
                         
@@ -788,6 +788,7 @@ class App(QFrame):
         self.pmean = []
         self.mean = []
         self.xaxis = []
+        self.x = 0
         
         self.mean_v = 0
         
@@ -816,7 +817,7 @@ class App(QFrame):
         self.encoder()
         self.pressureGraph_enable = True
         self.volumeGraph_enable = False
-
+    
         
     def comp_warning(self):
         global comp_on
@@ -865,20 +866,19 @@ class App(QFrame):
 
         pg.setConfigOptions(antialias=True)
         self.graphwidget = pg.PlotWidget()
-        self.graphwidget.setYRange(0,50)
+        self.graphwidget.setYRange(-10,50)
         #self.graphwidget.setXRange(0,200)
 #        self.graphwidget.setXRange(timestamp(), timestamp() + 100)
-
-        self.y = [randint(0,0) for _ in range(200)]  # 100 data points
-        self.x = list(range(200))
+        self.y = [randint(0,0) for _ in range(300)]  # 100 data points
+        self.x = list(range(300))
         
         self.graphwidget.setBackground('#0000')
         self.graphwidget.setLabel('left', 'Pressure')
         self.graphwidget.setLabel('bottom', 'x100 (Time in milliseconds) ')
-        #self.graphwidget.getPlotItem().hideAxis('bottom')
+        self.graphwidget.getPlotItem().hideAxis('bottom')
 
         pen = pg.mkPen(color='y')
-        self.data_line =  self.graphwidget.plot(self.x, self.y,pen=pen) #fillLevel=0,brush=(150,50,150,50))           #pen=pen)
+        self.data_line =  self.graphwidget.plot(self.x,self.y,pen=pen) #fillLevel=0,brush=(150,50,150,50))           #pen=pen)
         self.timer = QtCore.QTimer()
         self.timer.setInterval(100)
         self.timer.timeout.connect(self.update_plot_data)
@@ -956,7 +956,7 @@ class App(QFrame):
     def update_plot_data(self):
         
         global data_m,rr_value,ti,mod_val,pressure_val,pressure_pdata,two,ex_time
-        global pressure,fio_val,Cordinate
+        global pressure,fio_val,Cordinate,x_max_value,cycle_count
         if self.bthThread.breathStatus == 0:
             global data_m,peep_val
             
@@ -1108,8 +1108,8 @@ class App(QFrame):
         #
         try:
             if(self.pressureGraph_enable == True):
-                self.y = self.y[1:]
-                a = randint(0,100)
+                if(len(self.y)>229):
+                    self.y = self.y[1:]
                 y_data = int(data_m['Dpress+'][-1])
                 self.y.append(y_data)
                 self.x = self.x[1:]
@@ -1118,10 +1118,9 @@ class App(QFrame):
                 len_y = len(self.y)
                 if(len_x > len_y):
                     diff_len = len_x - len_y
-                    self.x = self.x[diff_len:]
-                
-     
+                    self.x = self.x[diff_len:]    
                 self.data_line.setData(self.x,self.y)
+               # print('Y_lem>>',len(self.y))
 
         except:
                 pass
