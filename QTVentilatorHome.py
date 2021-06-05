@@ -1199,8 +1199,8 @@ class App(QFrame):
         self.setLayout(windowLayout)
         self.mode_set = 2
         
-        self.show()
-        #self.showFullScreen()
+        #self.show()
+        self.showFullScreen()
     def readSettings(self,i):
         global mod_val
         
