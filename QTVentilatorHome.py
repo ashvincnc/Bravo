@@ -351,8 +351,8 @@ class breathWorker(QThread):
                 
                 self.pPWM.ChangeDutyCycle(self.pressureCycleValue[0])
                 self.o2PWM.ChangeDutyCycle(self.pressureCycleValue[1])
-                #print('pressure_cycle:',self.pressureCycleValue[0])
-                #print('oxygen_cycle:',self.pressureCycleValue[1])
+                print('pressure_cycle:',self.pressureCycleValue[0])
+                print('oxygen_cycle:',self.pressureCycleValue[1])
                 
                 GPIO.output(26,GPIO.LOW)
                 GPIO.output(14,GPIO.LOW)
@@ -529,6 +529,8 @@ class backendWorker(QThread):
         self.seam = []
         self.currentPressure_list = []
         self.average_pressure = []
+        self.average_oxygen = []
+        self.peep_list = []
         #GPIO.setup(4, GPIO.OUT)
 
     def stop(self):
@@ -599,6 +601,7 @@ class backendWorker(QThread):
                 if(a==True):
                     oxy_data = ADCdata[2]
                     oxy = int(oxy_data)
+                    #print('oxygen_data',oxy)
                     if oxy == 0:
                         oxy = 112
                     oxy = oxy - oxygen_voltage       #calibrated voltage was minused with the current sensor voltage,if the oxygen sensor gives more voltage 
@@ -637,10 +640,12 @@ class backendWorker(QThread):
                             
                             discountPressure = previousPressure * ALLOWABLE_PERCENT
                             previousPressure = previousPressure - discountPressure
-                            if(pressure > previousPressure):
+                            if(pressure > previousPressure) and (pressure > peep_val):
                                 self.dataDict["Dpress+"].append(pressure)
-                            else:
+                            if(pressure < previousPressure):
                                 self.dataDict["Dpress+"].append(previousPressure)
+                            if(pressure < peep_val):
+                                self.dataDict["Dpress+"].append(peep_val)    
                             
 
                     if(len(self.dataDict["Dpress+"])>300):
@@ -671,10 +676,10 @@ class backendWorker(QThread):
                             emergency = 9      
 
                 if (graph == 1):
-                    
-                    
 
                     self.currentPressure_list.append(pressure)
+                    #if(pressure < peep_val) or (pressure==0):
+                     #   self.currentPressure_list.append(peep_val)
                     Entry_point = len(self.currentPressure_list)
                     p = abs(self.currentPressure_list[-1])
                     disconnect =self.currentPressure_list[10:]
@@ -711,7 +716,7 @@ class backendWorker(QThread):
                                 lavs = 1
                                 print('set_pre,act_pre: ',trigger_data,currentP)
 
-                    
+                    test = pressure
                     if(len(self.dataDict["Dpress+"])>300):
                         self.dataDict = {
                                 "curr_act" : 0,
@@ -752,8 +757,18 @@ class backendWorker(QThread):
                   
                     if (self.s < peep_var):
                         currentPo = 1
+                        
+                    self.peep_list.append(pressure)
+                    if(len(self.peep_list)>50):
+                        self.peep_list = []
 
-                    self.dataDict["Dpress+"].append(self.s)
+                    #self.dataDict["Dpress+"].append(self.s)
+                    if(emergency == 0):    
+                        if((pressure > peep_val) or (pressure<0)) and self.peep_list[-1]<0 and self.peep_list[-2]<0:
+                            self.dataDict["Dpress+"].append(pressure)
+                        if(pressure < peep_val) or (pressure==0):
+                            self.dataDict["Dpress+"].append(peep_val)
+                    
 
                    
             except:
@@ -1199,8 +1214,8 @@ class App(QFrame):
         self.setLayout(windowLayout)
         self.mode_set = 2
         
-        #self.show()
-        self.showFullScreen()
+        self.show()
+        #self.showFullScreen()
     def readSettings(self,i):
         global mod_val
         
