@@ -1151,13 +1151,17 @@ class App(QFrame):
                 Compare_fio = fio_val*0.1
                 fio2 = int(fio_val - Compare_fio)
                 
-                if( fio2 > o2):
+                if( fio2 > o2) and (oxy_sensor_error == False):
                     self.laprd.setStyleSheet("background-color: red")
                     self.laprd.setText(str(o2))
                    
-                else:
+                if( fio2 < o2) and (oxy_sensor_error == False):
                     self.laprd.setStyleSheet("background-color: green")
                     self.laprd.setText(str(o2))
+                
+                if (oxy_sensor_error == True):
+                    self.laprd.setStyleSheet("background-color: red")
+                    self.laprd.setText('-')
                      
 
         except:
