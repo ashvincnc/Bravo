@@ -1,21 +1,20 @@
 {
   "VolumeValues": [
-    {"VolumeValue": {"min": 0,"max": 20,"value": 30}},
-    {"VolumeValue": {"min": 21,"max": 25,"value": 40}},
-    {"VolumeValue": {"min": 26,"max": 30,"value": 50}},
-    {"VolumeValue": {"min": 31,"max": 35,"value": 60}},
-    {"VolumeValue": {"min": 36,"max": 38,"value": 80}},
-    {"VolumeValue": {"min": 39,"max": 50,"value": 90}}
+    {"VolumeValue": {"min": 0,"max": 600,"value": 30}},
+    {"VolumeValue": {"min": 601,"max": 750,"value": 40}},
+    {"VolumeValue": {"min": 751,"max": 900,"value": 50}},
+    {"VolumeValue": {"min": 901,"max": 1050,"value": 60}},
+    {"VolumeValue": {"min": 1051,"max": 1140,"value": 80}},
+    {"VolumeValue": {"min": 1141,"max": 1500,"value": 90}}
 
   ],
   "OxygenValues": [
-    {"OxygenValue": {"min": 0,"max": 20,"value": 30}},
-    {"OxygenValue": {"min": 21,"max": 25,"value": 40}},
-    {"OxygenValue": {"min": 26,"max": 30,"value": 50}},
-    {"OxygenValue": {"min": 31,"max": 35,"value": 60}},
-    {"OxygenValue": {"min": 36,"max": 38,"value": 80}},
-    {"OxygenValue": {"min": 39,"max": 50,"value": 90}}
+    {"OxygenValue": {"min": 0,"max": 600,"value": 30}},
+    {"OxygenValue": {"min": 601,"max": 750,"value": 40}},
+    {"OxygenValue": {"min": 751,"max": 900,"value": 50}},
+    {"OxygenValue": {"min": 901,"max": 1050,"value": 60}},
+    {"OxygenValue": {"min": 1051,"max": 1140,"value": 80}},
+    {"OxygenValue": {"min": 1141,"max": 1500,"value": 90}}
  
   ]
 }
-

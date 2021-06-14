@@ -46,6 +46,7 @@ global comp_on
 global slider
 global pressure_voltage
 global cycle_count
+global Pressure_calib
 
 global set_ventilator
 set_ventilator  =  []
@@ -88,10 +89,11 @@ es = 7
 mod_val = 2
 trigger_data = -3
 x_max_value = 800
-
+Pressure_calib = False
+comp_on = False
 
 def start_up():
-    global comp_on
+    global comp_on,Pressure_calib
 
     GPIO.setup(12, GPIO.OUT)
     GPIO.setup(13, GPIO.OUT)
@@ -108,13 +110,19 @@ def start_up():
         pPWM.ChangeDutyCycle(i)
         o2PWM.ChangeDutyCycle(i)
         time.sleep(0.05)
-    data = adc.read_adc(0, gain=1)
-    data = data/8000
-    data = round(data,1)
-    if(data > 2.8):
-        comp_on = True
-    else:
-        comp_on = False      
+    try:    
+        data = adc.read_adc(0, gain=1)
+        data = data/8000
+        data = round(data,1)
+        Pressure_calib = True
+        if(data > pressure_voltage):
+            comp_on = True
+        else:
+            comp_on = False      
+
+    except:
+        Pressure_calib = False
+        pass
 
     o2PWM.stop()
     pPWM.stop()
@@ -1214,8 +1222,8 @@ class App(QFrame):
         self.setLayout(windowLayout)
         self.mode_set = 2
         
-        self.show()
-        #self.showFullScreen()
+        #self.show()
+        self.showFullScreen()
     def readSettings(self,i):
         global mod_val
         
@@ -1630,8 +1638,9 @@ class App(QFrame):
         self.Bbpm.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
         self.Bpeep.setStyleSheet("background-color: white; color: black; border-style: outset; border-width: 2px; border-radius: 15px; border-color: #55F4A5; padding: 4px;")
 
-        self.slider.setValue(70)
-        self.lfio2.setText(str(70))
+        
+        v = self.lfio2.text()
+        self.slider.setValue(int(v))
         self.slider.setVisible(True)
         self.update_val.setVisible(True)
         self.label.setVisible(True)
