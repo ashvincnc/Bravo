@@ -619,7 +619,11 @@ class backendWorker(QThread):
                         oxy_value = oxy
                     if oxy <= 0:
                         oxy = oxy_value               #conuslt with authority for oxygen value is zerpo
-                    self.dataDict["o2conc"].append(oxy)
+                    self.average_oxygen.append(oxy)
+                    if( len(self.average_oxygen) > 50):
+                        oxy = sum(self.average_oxygen)/len(self.average_oxygen)
+                        self.dataDict["o2conc"].append(oxy)
+                        self.average_oxygen = []
                     pVolts = (ADCdata[0]/8000)
                     pVolts = round(pVolts,2)
                     pressure = ((pVolts - pressure_voltage)/0.2)*5
