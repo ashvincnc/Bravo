@@ -9,10 +9,10 @@ class Calibration:
         for i in range(20):
             self.data = self.adc.read_adc(0, gain=1)
             volt = self.data/8000
-            volt = round(volt,1)
+            volt = round(volt,2)
             volt_list.append(volt)
             voltage = sum(volt_list)/len(volt_list)
-            voltage = round(voltage,1)
+            voltage = round(voltage,2)
             #print('adc_val',voltage)      
         return voltage
     def oxygen_calibration(self):
@@ -24,14 +24,7 @@ class Calibration:
             volt_list.append(volt)
             voltage = sum(volt_list)/len(volt_list)
             voltage = round(voltage,1)
-            volt_factor = voltage-117
-            #print('adc_val',voltage)      
-        return volt_factor
+            volt_factor = 21/voltage
 
-#a = Calibration()
-#v = a.oxygen_voltage()
-#v_c = v-117
-#oxy = v-v_c
-#v = v*0.1875
-#print('voltage>>',v)
-#print('Calibrated_voltage>>',v_c)
+        return volt_factor
+    

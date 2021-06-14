@@ -8,6 +8,7 @@ from random import randint
 from pyky040 import pyky040
 from PyQt5.QtCore import QThread
 from SensorCalibration import Calibration
+from oxygen_sensor_alarm import oxygen_alert
 
 import pyqtgraph as pg
 import sys  
@@ -44,11 +45,12 @@ global x_max_value
 global es
 global comp_on
 global slider
-global pressure_voltage
+global pressure_voltage,oxygen_voltage
 global cycle_count
 global Pressure_calib
-
+global oxygen_alert,oxy_sensor_error,oxygenVolt
 global set_ventilator
+
 set_ventilator  =  []
 set_ventilator = sys.argv[-1]
 print("set_ventilator",set_ventilator)
@@ -59,6 +61,8 @@ else:
 calibration = Calibration()
 pressure_voltage = calibration.pressure_calibration()
 oxygen_voltage = calibration.oxygen_calibration()
+oxygen_alert = oxygen_alert()
+oxygenVolt = oxygen_alert.oxygen_voltage()
 sys.setrecursionlimit(10**3)
 GPIO.setmode(GPIO.BCM)                          #Setting_up_GPIO
 adc = Adafruit_ADS1x15.ADS1115(address=0x48)    #Giving_instance_for_ADC
@@ -92,6 +96,16 @@ x_max_value = 800
 Pressure_calib = False
 comp_on = False
 
+def oxygen_sensor_check():
+    global oxygen_alert,oxy_sensor_error,oxygenVolt
+    print('oxygen_alert', oxygenVolt)
+    if (oxygenVolt<10):
+        oxy_sensor_error = True
+    else:
+        oxy_sensor_error = False
+        
+oxygen_sensor_check()
+
 def start_up():
     global comp_on,Pressure_calib
 
@@ -114,14 +128,12 @@ def start_up():
         data = adc.read_adc(0, gain=1)
         data = data/8000
         data = round(data,1)
-        Pressure_calib = True
         if(data > pressure_voltage):
             comp_on = True
         else:
             comp_on = False      
 
     except:
-        Pressure_calib = False
         pass
 
     o2PWM.stop()
@@ -572,7 +584,7 @@ class backendWorker(QThread):
         global value,peep_val,test_ex,pressure
         global emergency
         global fio_val,ps_end,es,mod_val,clear_set
-        global pressure_voltage
+        global pressure_voltage,oxygen_voltage,previous_oxy
         
          
          
@@ -610,11 +622,13 @@ class backendWorker(QThread):
                     oxy_data = ADCdata[2]
                     oxy = int(oxy_data)
                     #print('oxygen_data',oxy)
+                    if oxy != 0:
+                        previous_oxy = oxy
                     if oxy == 0:
-                        oxy = 112
-                    oxy = oxy - oxygen_voltage       #calibrated voltage was minused with the current sensor voltage,if the oxygen sensor gives more voltage 
+                        oxy = previous_oxy
+                    #oxy = oxy - oxygen_voltage       #calibrated voltage was minused with the current sensor voltage,if the oxygen sensor gives more voltage 
                     oxy = int(oxy)
-                    oxy = oxy*0.1875
+                    oxy = oxy*oxygen_voltage
                     if oxy > 0:
                         oxy_value = oxy
                     if oxy <= 0:
@@ -837,6 +851,7 @@ class App(QFrame):
 
         self.beThread.stopSignal.connect(self.beThread.stop)
         self.comp_warning()
+        self.oxygen_warning()
         self.update_parameters()
         self.graph()
         self.value_set()
@@ -845,7 +860,23 @@ class App(QFrame):
         self.pressureGraph_enable = True
         self.volumeGraph_enable = False
     
+    def oxygen_warning(self):
+        global oxy_sensor_error
         
+        if oxy_sensor_error == True:
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Warning)
+            msgBox.setText("Oxygen sensor Error Detected.")
+            msgBox.setWindowTitle("o2 Senor Error")
+            msgBox.setStandardButtons(QMessageBox.Ok)
+        #msgBox.buttonClicked.connect(msgButtonClick)
+
+            returnValue = msgBox.exec()
+            if returnValue == QMessageBox.Ok:
+                  print('OK clicked')
+        
+
+    
     def comp_warning(self):
         global comp_on
         
