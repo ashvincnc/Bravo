@@ -60,9 +60,11 @@ else:
     set_ventilator = 0    
 calibration = Calibration()
 pressure_voltage = calibration.pressure_calibration()
+time.sleep(1)
 oxygen_voltage = calibration.oxygen_calibration()
-oxygen_alert = oxygen_alert()
-oxygenVolt = oxygen_alert.oxygen_voltage()
+time.sleep(1)
+#oxygen_alert = oxygen_alert()
+oxygenVolt = calibration.oxygenSensor_alert()
 sys.setrecursionlimit(10**3)
 GPIO.setmode(GPIO.BCM)                          #Setting_up_GPIO
 adc = Adafruit_ADS1x15.ADS1115(address=0x48)    #Giving_instance_for_ADC
@@ -851,7 +853,7 @@ class App(QFrame):
 
         self.beThread.stopSignal.connect(self.beThread.stop)
         self.comp_warning()
-        self.oxygen_warning()
+        #self.oxygen_warning()
         self.update_parameters()
         self.graph()
         self.value_set()
@@ -1151,18 +1153,17 @@ class App(QFrame):
                 Compare_fio = fio_val*0.1
                 fio2 = int(fio_val - Compare_fio)
                 
-                if( fio2 > o2) and (oxy_sensor_error == False):
+                if( fio2 > o2): # and (oxy_sensor_error == False):
                     self.laprd.setStyleSheet("background-color: red")
                     self.laprd.setText(str(o2))
                    
-                if( fio2 < o2) and (oxy_sensor_error == False):
+                if( fio2 < o2): # and (oxy_sensor_error == False):
                     self.laprd.setStyleSheet("background-color: green")
-                    self.laprd.setText(str(o2))
-                
-                if (oxy_sensor_error == True):
-                    self.laprd.setStyleSheet("background-color: red")
-                    self.laprd.setText('-')
-                     
+            
+                #if (oxy_sensor_error == True):
+                    #self.laprd.setStyleSheet("background-color: red")
+                    #self.laprd.setText('-')
+               
 
         except:
            pass

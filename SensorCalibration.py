@@ -15,6 +15,18 @@ class Calibration:
             voltage = round(voltage,2)
             #print('adc_val',voltage)      
         return voltage
+    def oxygenSensor_alert(self):
+        volt_list = []
+        for i in range(200):
+            self.data = self.adc.read_adc(2, gain=1)
+            volt = self.data
+            volt = round(volt,1)
+            volt_list.append(volt)
+            voltage = sum(volt_list)/len(volt_list)
+            voltage = round(voltage,1)
+            
+        return voltage
+        
     def oxygen_calibration(self):
         volt_list = []
         for i in range(200):
@@ -24,6 +36,7 @@ class Calibration:
             volt_list.append(volt)
             voltage = sum(volt_list)/len(volt_list)
             voltage = round(voltage,1)
+            #print( '>>> Voltage >>>>', voltage)
             volt_factor = 21/voltage
 
         return volt_factor
